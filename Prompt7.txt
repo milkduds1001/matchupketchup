@@ -1,0 +1,11 @@
+Please add a summary feature to this MTG matchup app.
+
+Requirements:
+- calculate a weighted total score for each card using the metagame percentages
+- display a summary table below the main matchup table
+- columns should include:
+  card name
+  quantity
+  weighted score
+- also show the best 3 and worst 3 cards by weighted score
+- write the calculation clearly and use beginner-friendly code

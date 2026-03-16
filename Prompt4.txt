@@ -1,0 +1,12 @@
+Please build a DeckUpload component for my React app.
+
+Requirements:
+- allow the user to upload a .txt file
+- read the file contents in the browser
+- parse each non-empty line in the format "quantity card name"
+- convert the result into an array like:
+  [{ id, name, quantity }]
+- ignore invalid blank lines
+- show a friendly error message for lines that cannot be parsed
+- pass the parsed cards back up to App.jsx
+- keep the code beginner-friendly and explain how file upload works

@@ -1,0 +1,8 @@
+Primary headline fonts:
+- Cooper Black
+- Fredoka
+- Luckiest Guy
+
+Body/UI fonts:
+- Montserrat
+- Nunito

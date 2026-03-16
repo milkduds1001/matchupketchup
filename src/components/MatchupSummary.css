@@ -1,0 +1,78 @@
+.matchup-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.matchup-summary-empty {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.9rem;
+}
+
+.matchup-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.matchup-summary-table th,
+.matchup-summary-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.matchup-summary-table th {
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.matchup-summary-table th:first-child,
+.matchup-summary-table td:first-child {
+  padding-left: 0;
+}
+
+.matchup-summary-card-name {
+  font-weight: 500;
+}
+
+.matchup-summary-extremes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.matchup-summary-block h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.matchup-summary-block ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.matchup-summary-block li {
+  margin-bottom: 0.3rem;
+}
+
+@media (max-width: 500px) {
+  .matchup-summary-extremes {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .matchup-summary-empty {
+    color: rgba(0, 0, 0, 0.5);
+  }
+  .matchup-summary-table th,
+  .matchup-summary-table td {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+  }
+  .matchup-summary-table th {
+    background: rgba(0, 0, 0, 0.03);
+  }
+}

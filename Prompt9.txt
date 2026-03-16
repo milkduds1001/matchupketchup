@@ -1,0 +1,9 @@
+Please add CSV export to this app.
+
+Requirements:
+- export the matchup table to a CSV file
+- include card name and quantity
+- include one column for each archetype
+- export the entered matchup values
+- add a button to download the CSV
+- keep the implementation simple and explain how the CSV is generated

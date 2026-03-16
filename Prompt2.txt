@@ -1,0 +1,12 @@
+Please build a React component called MatchupTable.
+
+Requirements:
+- accept two props: cards and archetypes
+- render a table
+- first column = card name
+- second column = quantity
+- additional columns = archetype names
+- also show the archetype metagame percent in the column header
+- use clean beginner-friendly code
+- keep styling simple
+- show me how to use this component inside App.jsx with hardcoded sample data

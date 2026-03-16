@@ -1,0 +1,10 @@
+Please add localStorage support to this app.
+
+Requirements:
+- save cards
+- save archetypes
+- save matchup cell values
+- load them automatically when the app starts
+- use helper functions in a utils/storage.js file
+- handle bad or missing localStorage data safely
+- explain where localStorage is being read and written

@@ -1,0 +1,12 @@
+I am a beginner and I want help building a simple React app with Vite.
+
+Please help me clean up the default starter app and replace it with a very simple layout for an MTG matchup tool.
+
+Requirements:
+- simple page title
+- section for deck upload (placeholder for now)
+- section for metagame input (placeholder for now)
+- section for matchup table
+- section for summary (placeholder for now)
+- use beginner-friendly React code
+- explain what files you create or modify

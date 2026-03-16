@@ -1,0 +1,168 @@
+.metagame-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.metagame-input-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-family: var(--font-body, 'Nunito', sans-serif);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(12, 74, 110, 0.08);
+}
+
+.metagame-input-table th,
+.metagame-input-table td {
+  border-bottom: 1px solid rgba(184, 134, 11, 0.15);
+  padding: 0.35rem 0.45rem;
+}
+
+.metagame-input-table th {
+  text-align: left;
+  font-weight: 700;
+  font-family: var(--font-display, 'Fredoka', sans-serif);
+  background: var(--ketchup-red, #B8860B);
+  color: #fff;
+}
+
+.metagame-col-index {
+  width: 2rem;
+  text-align: center;
+}
+
+.metagame-col-name {
+  width: 60%;
+}
+
+.metagame-col-share {
+  width: 25%;
+  text-align: right;
+}
+
+.metagame-cell-index {
+  text-align: center;
+  color: var(--charcoal, #2B2B2B);
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.metagame-input-name,
+.metagame-input-share {
+  width: 100%;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border-radius: 8px;
+  border: 2px solid rgba(184, 134, 11, 0.35);
+  background: var(--cream-white, #FFF4E0);
+  color: var(--charcoal, #2B2B2B);
+  box-sizing: border-box;
+}
+
+.metagame-input-share {
+  text-align: right;
+}
+
+.metagame-input-name::placeholder,
+.metagame-input-share::placeholder {
+  color: rgba(43, 43, 43, 0.45);
+}
+
+.metagame-input-name:focus,
+.metagame-input-share:focus {
+  outline: none;
+  border-color: var(--ketchup-red, #B8860B);
+  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.2);
+}
+
+.metagame-row-other .metagame-cell-other-label {
+  font-weight: 700;
+  font-family: var(--font-display, 'Fredoka', sans-serif);
+  text-align: left;
+  color: var(--charcoal, #2B2B2B);
+}
+
+.metagame-row-other .metagame-cell-other-share {
+  text-align: right;
+  font-weight: 700;
+  color: var(--charcoal, #2B2B2B);
+}
+
+.metagame-input-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.metagame-input-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: var(--font-body, 'Nunito', sans-serif);
+  border-radius: 10px;
+  border: 2px solid var(--ketchup-red, #B8860B);
+  background: var(--ketchup-red, #B8860B);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(184, 134, 11, 0.3);
+}
+
+.metagame-input-btn:hover {
+  background: var(--diner-blue, #2A4E9B);
+  border-color: var(--diner-blue, #2A4E9B);
+}
+
+.metagame-input-btn-secondary {
+  background: var(--cream-white, #FFF4E0);
+  border-color: rgba(184, 134, 11, 0.5);
+  color: var(--ketchup-red, #B8860B);
+}
+
+.metagame-input-btn-secondary:hover {
+  background: rgba(184, 134, 11, 0.1);
+}
+
+.metagame-input-btn-load-sample-hidden {
+  display: none;
+}
+
+.metagame-input-hint {
+  margin: 0;
+  color: var(--charcoal, #2B2B2B);
+  opacity: 0.8;
+  font-size: 0.88rem;
+}
+
+.metagame-input-hint code {
+  padding: 0.12rem 0.35rem;
+  border-radius: 6px;
+  background: rgba(184, 134, 11, 0.1);
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--ketchup-red, #B8860B);
+}
+
+.metagame-input-errors {
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: rgba(254, 226, 226, 0.95);
+  border: 2px solid rgba(220, 38, 38, 0.35);
+  color: #991b1b;
+  font-size: 0.9rem;
+}
+
+.metagame-input-errors strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-family: var(--font-display, 'Fredoka', sans-serif);
+}
+
+.metagame-input-errors ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}

@@ -1,0 +1,52 @@
+.deck-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deck-upload-input {
+  font-size: 0.95rem;
+  font-family: var(--font-body, 'Nunito', sans-serif);
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 2px dashed rgba(184, 134, 11, 0.5);
+  background: var(--cream-white, #FFF4E0);
+  color: var(--charcoal, #2B2B2B);
+}
+
+.deck-upload-hint {
+  margin: 0;
+  color: var(--charcoal, #2B2B2B);
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
+
+.deck-upload-hint code {
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  background: rgba(184, 134, 11, 0.1);
+  color: var(--ketchup-red, #B8860B);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.deck-upload-errors {
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: rgba(254, 226, 226, 0.95);
+  border: 2px solid rgba(220, 38, 38, 0.35);
+  color: #991b1b;
+  font-size: 0.9rem;
+}
+
+.deck-upload-errors strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-family: var(--font-display, 'Fredoka', sans-serif);
+}
+
+.deck-upload-errors ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}

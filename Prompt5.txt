@@ -1,0 +1,12 @@
+Please build a MetagameInput component.
+
+Requirements:
+- include a textarea where a user can paste lines in the format:
+  Archetype Name,Percent
+- parse the lines into an array like:
+  [{ id, name, metaPercent }]
+- ignore blank lines
+- show validation errors for bad lines
+- add a button to load sample Standard metagame data
+- pass the parsed archetypes back to App.jsx
+- keep the code simple and beginner-friendly

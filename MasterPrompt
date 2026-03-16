@@ -1,0 +1,22 @@
+I am a beginner building a simple MTG matchup web app in React with Vite.
+
+Please help me build this step by step and do not overengineer it.
+
+The app should:
+- let a user upload a .txt decklist
+- parse lines into card quantity and card name
+- let a user input Standard archetypes and metagame percentages
+- render cards as rows and archetypes as columns in a table
+- let the user enter positive or negative integers in each cell
+- save the data in localStorage
+- show weighted summary scores
+
+Constraints:
+- frontend only
+- no backend
+- no auth
+- no database
+- no TypeScript
+- beginner-friendly code
+- explain changes clearly
+- only implement one step at a time

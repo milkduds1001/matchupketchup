@@ -1,0 +1,9 @@
+Please update the MatchupTable so that every matchup cell is an editable input.
+
+Requirements:
+- store cell values in React state in App.jsx
+- use a flat object keyed like "cardId::archetypeId"
+- each input should accept positive integers, negative integers, or blank
+- when a user changes a value, update state
+- pass the values and update handler down into MatchupTable as props
+- explain the data flow simply

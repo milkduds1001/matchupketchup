@@ -1,0 +1,10 @@
+Please improve the UI of this app without changing the core logic.
+
+Requirements:
+- cleaner spacing and layout
+- better table styling
+- sticky headers if possible
+- make the matchup table horizontally scroll on smaller screens
+- style the inputs so they fit the table cleanly
+- add a reset button for matchup values
+- keep the design minimal and readable

@@ -1,0 +1,308 @@
+.matchup-table-wrapper {
+  margin: 0;
+  padding: 0;
+  display: inline-block;
+  width: fit-content;
+}
+
+.matchup-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  min-width: calc(10ch * var(--table-cols, 5));
+}
+
+/* Tighter columns; allow header text to wrap */
+.matchup-table .col-card {
+  width: calc(100% / var(--table-cols, 5));
+  min-width: 20ch;
+}
+
+.matchup-table .col-qty {
+  width: calc(100% / var(--table-cols, 5));
+  min-width: 4ch;
+}
+
+.matchup-table .col-type,
+.matchup-table .col-group,
+.matchup-table .col-arch {
+  width: calc(100% / var(--table-cols, 5));
+  min-width: 10ch;
+}
+
+.matchup-table .col-movement {
+  width: calc(100% / var(--table-cols, 5));
+  min-width: 7ch;
+}
+
+/* Keep header rows above body when scrolling: thead in its own stacking context */
+.matchup-table thead {
+  position: relative;
+  z-index: 10;
+}
+
+.matchup-table th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 0.2rem 0.18rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-display, 'Fredoka', system-ui, sans-serif);
+  background: var(--ketchup-red, #B8860B);
+  color: #fff;
+  border-bottom: 3px solid var(--mustard-yellow, #F4B400);
+  box-shadow: 0 2px 8px rgba(184, 134, 11, 0.3);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.matchup-table .th-card,
+.matchup-table .th-qty {
+  text-align: left;
+  padding-left: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.matchup-table .th-type,
+.matchup-table .th-group {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.matchup-table .th-arch-name {
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.15;
+  font-size: 0.95rem;
+}
+
+.matchup-table .th-movement {
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.15rem;
+}
+
+.matchup-table .movement-cell {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--charcoal, #2B2B2B);
+}
+
+.matchup-table .movement-cell.movement-negative {
+  color: #b91c1c;
+}
+
+.matchup-table .movement-cell.movement-positive {
+  color: #0d6b0d;
+}
+
+/* Second header row (metagame %) sticks just below the first row so both stay visible when scrolling */
+.matchup-table thead tr:nth-child(2) th {
+  top: 1.85rem;
+}
+
+.matchup-table .th-arch-pct {
+  text-align: center;
+  font-weight: 400;
+  font-size: 0.9rem;
+  opacity: 0.95;
+  padding-top: 0.08rem;
+  padding-bottom: 0.18rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.matchup-table td {
+  padding: 0.16rem 0.2rem;
+  border-bottom: 1px solid rgba(184, 134, 11, 0.1);
+  vertical-align: middle;
+  text-align: center;
+  background: var(--cream-white, #FFF4E0);
+}
+
+.matchup-table td:first-child {
+  padding-left: 0.35rem;
+  text-align: left;
+}
+
+.matchup-table td:nth-child(2),
+.matchup-table td:nth-child(3),
+.matchup-table td:nth-child(4) {
+  text-align: center;
+}
+
+.matchup-table .card-name {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.matchup-table .card-type {
+  font-size: 0.8em;
+  color: var(--charcoal, #2B2B2B);
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.matchup-table .card-group {
+  font-size: 0.8em;
+  font-weight: 700;
+  font-family: var(--font-body, 'Nunito', sans-serif);
+  color: var(--charcoal, #2B2B2B);
+  white-space: nowrap;
+}
+
+
+/* Inputs sized to fit cells cleanly, centered in column */
+.matchup-table .matchup-input {
+  display: block;
+  width: 100%;
+  min-width: 2rem;
+  max-width: 3rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0.22rem 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: var(--font-body, 'Nunito', sans-serif);
+  text-align: center;
+  border-radius: 8px;
+  border: 2px solid rgba(184, 134, 11, 0.25);
+  background: var(--cream-white, #FFF4E0);
+  color: var(--charcoal, #2B2B2B);
+  box-sizing: border-box;
+}
+
+.matchup-table .matchup-input--positive {
+  color: #0d6b0d;
+  font-weight: 600;
+  background-color: rgba(13, 107, 13, 0.18) !important;
+}
+
+.matchup-table .matchup-input--negative {
+  color: #b91c1c;
+  font-weight: 600;
+  background-color: rgba(185, 28, 28, 0.18) !important;
+}
+
+.matchup-table .matchup-input:focus {
+  outline: none;
+  border-color: var(--ketchup-red, #B8860B);
+  background: var(--cream-white, #FFF4E0);
+  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.25);
+}
+
+.matchup-table .matchup-input::placeholder {
+  color: rgba(43, 43, 43, 0.4);
+}
+
+/* Section labels: MAIN DECK and SIDEBOARD - stand out and stay visible when scrolling */
+.matchup-table .matchup-section-label td {
+  position: sticky;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.matchup-table .matchup-section-main .matchup-section-label-cell {
+  top: 2.75rem; /* below sticky thead (two rows) */
+}
+
+.matchup-table .matchup-section-sideboard .matchup-section-label-cell {
+  top: 2.75rem;
+}
+
+.matchup-table .matchup-section-label-cell {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: var(--font-display, 'Fredoka', sans-serif);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--ketchup-red, #B8860B);
+  color: #fff;
+  border-top: 1px solid var(--mustard-yellow, #F4B400);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(184, 134, 11, 0.25);
+}
+
+.matchup-table .matchup-section-main .matchup-section-label-cell {
+  border-top: none;
+}
+
+.matchup-table .matchup-section-sideboard .matchup-section-label-cell {
+  background: var(--diner-blue, #2A4E9B);
+  border-top: 2px solid var(--mustard-yellow, #F4B400);
+}
+
+.matchup-table .sideboard-row td {
+  background: rgba(255, 244, 224, 0.7);
+}
+
+/* Within the main deck, visual breaks for each group (Lands, Creatures & Planeswalkers, Other Spells) */
+.matchup-table .matchup-group-label .matchup-group-label-cell {
+  padding: 0.28rem 0.5rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-family: var(--font-display, 'Fredoka', sans-serif);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255, 244, 224, 0.9);
+  color: var(--charcoal, #2B2B2B);
+  border-top: 1px solid rgba(184, 134, 11, 0.25);
+  border-bottom: 1px solid rgba(184, 134, 11, 0.15);
+}
+
+/* Totals rows in tfoot - black text on light background for readability */
+.matchup-table tfoot {
+  display: table-footer-group;
+}
+
+.matchup-table .matchup-totals-row td {
+  padding: 0.35rem 0.4rem;
+  border-top: 2px solid rgba(184, 134, 11, 0.25);
+  background: var(--cream-white, #FFF4E0);
+  vertical-align: middle;
+  visibility: visible;
+}
+
+.matchup-table .matchup-totals-row-in .matchup-totals-label,
+.matchup-table .matchup-totals-row-in .matchup-totals-number {
+  color: #0d6b0d;
+}
+
+.matchup-table .matchup-totals-row-out .matchup-totals-label,
+.matchup-table .matchup-totals-row-out .matchup-totals-number {
+  color: #b91c1c;
+}
+
+.matchup-table .matchup-totals-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #111;
+}
+
+.matchup-table .matchup-totals-values {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  color: #111;
+  white-space: nowrap;
+}
+
+.matchup-table .matchup-totals-number {
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+}
+
+/* Theme is unified (light panels); keep contrast tweaks if needed */
+@media (prefers-color-scheme: light) {
+  .matchup-table .th-arch-pct {
+    opacity: 0.95;
+  }
+}
