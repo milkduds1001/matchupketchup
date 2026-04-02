@@ -107,10 +107,13 @@ async function fetchFormatFromGoldfish(formatName, pathSlug) {
 }
 
 async function fetchFreshPayload() {
-  const formats = {}
-  for (const [formatName, pathSlug] of Object.entries(GOLD_FISH_FORMAT_PATHS)) {
-    formats[formatName] = await fetchFormatFromGoldfish(formatName, pathSlug)
-  }
+  const entries = await Promise.all(
+    Object.entries(GOLD_FISH_FORMAT_PATHS).map(async ([formatName, pathSlug]) => {
+      const archetypes = await fetchFormatFromGoldfish(formatName, pathSlug)
+      return [formatName, archetypes]
+    })
+  )
+  const formats = Object.fromEntries(entries)
   return {
     source: 'MTG Goldfish',
     snapshotLabel: 'Last 30 Days',
@@ -133,9 +136,14 @@ function buildFallbackPayload() {
   }
 }
 
-export async function getMetagameDefaultsPayload() {
+/**
+ * @param {{ bypassCache?: boolean }} [options]
+ *   bypassCache — skip the 24h in-memory cache (used for explicit “Refresh MTG Goldfish” and ?refresh=1).
+ */
+export async function getMetagameDefaultsPayload(options = {}) {
+  const bypassCache = Boolean(options.bypassCache)
   const now = Date.now()
-  if (memoryCache && now - cacheUpdatedAt < ONE_DAY_MS) {
+  if (!bypassCache && memoryCache && now - cacheUpdatedAt < ONE_DAY_MS) {
     return { ...memoryCache, cached: true }
   }
 
@@ -155,12 +163,23 @@ export async function getMetagameDefaultsPayload() {
   }
 }
 
+function wantsRefreshBypass(req) {
+  const q = req.query || {}
+  const v = String(q.refresh ?? q.nocache ?? '').toLowerCase()
+  return v === '1' || v === 'true'
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method not allowed' })
     return
   }
-  const payload = await getMetagameDefaultsPayload()
-  res.setHeader('Cache-Control', payload.unavailable ? 'public, max-age=300' : 'public, max-age=3600')
+  const bypassCache = wantsRefreshBypass(req)
+  const payload = await getMetagameDefaultsPayload({ bypassCache })
+  if (bypassCache) {
+    res.setHeader('Cache-Control', 'private, no-store')
+  } else {
+    res.setHeader('Cache-Control', payload.unavailable ? 'public, max-age=300' : 'public, max-age=3600')
+  }
   res.status(200).json(payload)
 }

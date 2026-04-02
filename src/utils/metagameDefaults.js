@@ -46,8 +46,13 @@ export function normalizeMetagameDefaultsPayload(raw) {
   }
 }
 
-export async function fetchMetagameDefaults() {
-  const response = await fetch('/api/metagame-defaults', {
+/**
+ * @param {{ refresh?: boolean }} [options]
+ *   refresh — force a new scrape (skips server 24h memory cache); use for “Refresh MTG Goldfish”.
+ */
+export async function fetchMetagameDefaults(options = {}) {
+  const qs = options.refresh ? '?refresh=1' : ''
+  const response = await fetch(`/api/metagame-defaults${qs}`, {
     method: 'GET',
     headers: { accept: 'application/json' },
   })

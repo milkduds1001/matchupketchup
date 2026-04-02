@@ -39,6 +39,13 @@
 1. Open the host’s preview URL (`*.vercel.app`, `*.netlify.app`, `*.pages.dev`).
 2. Load the app and open the metagame flow that fetches defaults.
 3. Optionally verify the API directly: `https://<your-preview-host>/api/metagame-defaults` should return JSON.
+4. To **force a new scrape** (bypass the server’s 24h memory cache): `GET /api/metagame-defaults?refresh=1` — the in-app **Refresh MTG Goldfish** button uses this.
+
+### Troubleshooting MTG Goldfish on Vercel (or any host)
+
+- **Empty archetypes / `unavailable: true` in JSON:** MTG Goldfish may block or throttle requests from cloud datacenter IPs, or their HTML layout may have changed so the scraper in [`api/metagame-defaults.js`](../api/metagame-defaults.js) no longer finds tiles. Check the `error` field in the JSON response and Vercel **Functions** logs for the failing request.
+- **Timeouts:** The API fetches four format pages **in parallel** to stay within typical serverless limits. [`vercel.json`](../vercel.json) sets `maxDuration` for `api/metagame-defaults.js` to 30s where your plan allows (Hobby caps at 10s).
+- **“Refresh” used to show stale data:** Previously the server cached results for 24 hours and the UI refresh still hit that cache. **Refresh MTG Goldfish** now calls `?refresh=1` so each click triggers a new fetch when Goldfish allows it.
 
 ## 4. Custom domain (domain purchased from Wix)
 

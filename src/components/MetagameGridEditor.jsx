@@ -118,7 +118,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     setGoldfishRefreshing(true)
     setDefaultsStatus('')
     try {
-      const payload = await fetchMetagameDefaults()
+      const payload = await fetchMetagameDefaults({ refresh: true })
       const data = getDefaultsForFormat(payload, format)
       if (!Array.isArray(data.archetypes) || data.archetypes.length === 0) {
         setDefaultsStatus('MTG Goldfish data is temporarily unavailable for this format.')

@@ -10,12 +10,18 @@ export default defineConfig({
       name: 'metagame-defaults-dev-route',
       configureServer(server) {
         server.middlewares.use(async (req, res, next) => {
-          if (req.url !== '/api/metagame-defaults' || req.method !== 'GET') {
+          const pathname = (req.url || '').split('?')[0]
+          if (pathname !== '/api/metagame-defaults' || req.method !== 'GET') {
             next()
             return
           }
           try {
-            const payload = await getMetagameDefaultsPayload()
+            const params = new URL(req.url || '/', 'http://vite.local').searchParams
+            const bypassCache =
+              params.get('refresh') === '1' ||
+              params.get('refresh') === 'true' ||
+              params.get('nocache') === '1'
+            const payload = await getMetagameDefaultsPayload({ bypassCache })
             res.statusCode = 200
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify(payload))
