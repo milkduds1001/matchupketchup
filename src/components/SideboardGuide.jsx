@@ -1,46 +1,68 @@
 import './SideboardGuide.css'
+import { buildOutsAndInsForArchetypeRole } from '../utils/matchupKeys.js'
 
-/**
- * Build OUTS (negative) and INS (positive) lines for one archetype from matchup values.
- * matchupValues keys are "cardName::archetypeName".
- */
-function buildOutsAndIns(matchupValues, archetypeName) {
-  const suffix = `::${archetypeName}`
-  const outs = []
-  const ins = []
-  if (!matchupValues || typeof matchupValues !== 'object' || Array.isArray(matchupValues)) {
-    return { outs, ins }
+/** Base ~0.9rem (slightly larger than old table default); shrinks as entry count grows. */
+const PLAYDRAW_FONT_BASE_REM = 0.9
+const PLAYDRAW_FONT_MIN_REM = 0.52
+const PLAYDRAW_FONT_PER_ENTRY = 0.034
+
+function playdrawFontRemForEntryCount(entryCount) {
+  if (entryCount <= 0) return PLAYDRAW_FONT_BASE_REM
+  return Math.max(
+    PLAYDRAW_FONT_MIN_REM,
+    PLAYDRAW_FONT_BASE_REM - entryCount * PLAYDRAW_FONT_PER_ENTRY
+  )
+}
+
+function OutsInsBlock({ outs, ins, hideLabels = false }) {
+  const entryCount = outs.length + ins.length
+  const fontRem = playdrawFontRemForEntryCount(entryCount)
+  const has = entryCount > 0
+  if (!has) {
+    return (
+      <div
+        className="sideboard-guide-playdraw-cell-inner sideboard-guide-playdraw-cell-inner--empty"
+        style={{ fontSize: `${PLAYDRAW_FONT_BASE_REM}rem` }}
+      >
+        <p className="sideboard-guide-cell-empty">No changes</p>
+      </div>
+    )
   }
-  for (const key of Object.keys(matchupValues)) {
-    if (!key.endsWith(suffix)) continue
-    let cardName = key.slice(0, -suffix.length)
-    // Strip any zone suffix (e.g. "::sideboard") from the display name so we
-    // don't show technical key information in the UI.
-    if (cardName.endsWith('::sideboard')) {
-      cardName = cardName.slice(0, -'::sideboard'.length)
-    }
-    const raw = matchupValues[key]
-    if (raw === undefined || raw === null || raw === '') continue
-    const n = Number.parseInt(String(raw).trim(), 10)
-    if (Number.isNaN(n)) continue
-    if (n < 0) outs.push({ cardName, qty: Math.abs(n) })
-    else if (n > 0) ins.push({ cardName, qty: n })
-  }
-  outs.sort((a, b) => a.cardName.localeCompare(b.cardName))
-  ins.sort((a, b) => a.cardName.localeCompare(b.cardName))
-  return { outs, ins }
+  return (
+    <div className="sideboard-guide-playdraw-cell-inner" style={{ fontSize: `${fontRem}rem` }}>
+      {outs.length > 0 && (
+        <>
+          {!hideLabels && <div className="sideboard-guide-label">OUTS:</div>}
+          <ul className="sideboard-guide-list-outs">
+            {outs.map(({ cardName, qty }) => (
+              <li key={cardName}>- {qty} {cardName}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {ins.length > 0 && (
+        <>
+          {!hideLabels && <div className="sideboard-guide-label">INS:</div>}
+          <ul className="sideboard-guide-list-ins">
+            {ins.map(({ cardName, qty }) => (
+              <li key={cardName}>+{qty} {cardName}</li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  )
 }
 
 /**
- * SideboardGuide - One block per matchup with OUTS/INS in plain English and a "Keys to the matchup" field.
- *
- * Props:
- *   archetypes - Array of { name, metagamePercent }
- *   matchupValues - Flat object keyed "cardName::archetypeName"
- *   keysToMatchup - Object keyed by archetype name -> string (free text)
- *   onKeysChange - (archetypeName, text) => void
+ * SideboardGuide - One block per matchup with OUTS/INS (play / draw) and a "Keys to the matchup" field.
  */
-function SideboardGuide({ archetypes = [], matchupValues = {}, keysToMatchup = {}, onKeysChange }) {
+function SideboardGuide({
+  archetypes = [],
+  matchupValues = {},
+  keysToMatchup = {},
+  onKeysChange,
+}) {
   const list = Array.isArray(archetypes) ? archetypes : []
 
   return (
@@ -50,52 +72,57 @@ function SideboardGuide({ archetypes = [], matchupValues = {}, keysToMatchup = {
       ) : (
         <div className="sideboard-guide-list">
           {list.map((arch) => {
-            const { outs, ins } = buildOutsAndIns(matchupValues, arch.name)
-            const hasChanges = outs.length > 0 || ins.length > 0
+            const onPlay = buildOutsAndInsForArchetypeRole(matchupValues, arch.name, 'play')
+            const onDraw = buildOutsAndInsForArchetypeRole(matchupValues, arch.name, 'draw')
             return (
               <div key={arch.name} className="sideboard-guide-block">
                 <h3 className="sideboard-guide-title">vs. {arch.name}</h3>
-                <div className="sideboard-guide-changes">
-                  {!hasChanges ? (
-                    <p className="sideboard-guide-no-changes">No sideboard changes entered for this matchup.</p>
-                  ) : (
-                    <>
-                      {outs.length > 0 && (
-                        <>
-                          <div className="sideboard-guide-label">OUTS:</div>
-                          <ul className="sideboard-guide-list-outs">
-                            {outs.map(({ cardName, qty }) => (
-                              <li key={cardName}>- {qty} {cardName}</li>
-                            ))}
-                          </ul>
-                        </>
-                      )}
-                      {ins.length > 0 && (
-                        <>
-                          <div className="sideboard-guide-label">INS:</div>
-                          <ul className="sideboard-guide-list-ins">
-                            {ins.map(({ cardName, qty }) => (
-                              <li key={cardName}>+{qty} {cardName}</li>
-                            ))}
-                          </ul>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
                 <div className="sideboard-guide-keys-wrap">
-                  <label className="sideboard-guide-keys-label" htmlFor={`keys-${arch.name}`}>
-                    Keys to the matchup
-                  </label>
-                  <textarea
-                    id={`keys-${arch.name}`}
-                    className="sideboard-guide-keys-input"
-                    value={keysToMatchup[arch.name] ?? ''}
-                    onChange={(e) => onKeysChange?.(arch.name, e.target.value)}
-                    placeholder="e.g. Kill their engine early, save removal for..."
-                    rows={3}
-                    aria-label={`Keys to the matchup vs ${arch.name}`}
-                  />
+                  <div className="sideboard-guide-playdraw-col">
+                    <table className="sideboard-guide-playdraw-table">
+                      <thead>
+                        <tr>
+                          <th className="sideboard-guide-playdraw-corner" scope="col" />
+                          <th scope="col">On the play</th>
+                          <th scope="col">On the draw</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <th scope="row">OUTS</th>
+                          <td>
+                            <OutsInsBlock outs={onPlay.outs} ins={[]} hideLabels />
+                          </td>
+                          <td>
+                            <OutsInsBlock outs={onDraw.outs} ins={[]} hideLabels />
+                          </td>
+                        </tr>
+                        <tr>
+                          <th scope="row">INS</th>
+                          <td>
+                            <OutsInsBlock outs={[]} ins={onPlay.ins} hideLabels />
+                          </td>
+                          <td>
+                            <OutsInsBlock outs={[]} ins={onDraw.ins} hideLabels />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="sideboard-guide-keys-col">
+                    <label className="sideboard-guide-keys-label" htmlFor={`keys-${arch.name}`}>
+                      Keys to the matchup
+                    </label>
+                    <textarea
+                      id={`keys-${arch.name}`}
+                      className="sideboard-guide-keys-input"
+                      value={keysToMatchup[arch.name] ?? ''}
+                      onChange={(e) => onKeysChange?.(arch.name, e.target.value)}
+                      placeholder="e.g. Kill their engine early, save removal for..."
+                      rows={3}
+                      aria-label={`Keys to the matchup vs ${arch.name}`}
+                    />
+                  </div>
                 </div>
               </div>
             )

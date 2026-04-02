@@ -1,0 +1,99 @@
+/**
+ * MatchupKetchup — design tokens (raw + semantic + legacy aliases)
+ * Body/UI: Inter. Display / step headers: Bebas Neue.
+ */
+
+:root {
+  /* --- Raw brand tokens --- */
+  --brand-ketchup: #c62828;
+  --brand-ketchup-dark: #8e1b1b;
+  --brand-tomato: #e53935;
+
+  --brand-mustard: #c69214;
+  --brand-mustard-dark: #9e7410;
+  --brand-mustard-soft: #f4e2b8;
+
+  --bg-page: #f7f2e7;
+  --bg-panel: #efe6d3;
+  --bg-card: #e4d7bd;
+
+  --border-default: #d6c7a8;
+
+  --text-primary: #2b2b2b;
+  --text-secondary: #5a5a5a;
+  --text-disabled: #9a9a9a;
+
+  --status-info: #2d6cdf;
+  --status-success: #2e7d32;
+  --status-warning: #f57c00;
+
+  /* --- Semantic usage tokens --- */
+  --color-primary: var(--brand-ketchup);
+  --color-primary-hover: var(--brand-ketchup-dark);
+  --color-primary-active: var(--brand-ketchup-dark);
+  --color-on-primary: #ffffff;
+
+  --color-secondary: var(--brand-mustard);
+  --color-secondary-hover: var(--brand-mustard-dark);
+  --color-secondary-soft: var(--brand-mustard-soft);
+
+  --color-page-background: var(--bg-page);
+  --color-surface: var(--bg-panel);
+  --color-card: var(--bg-card);
+  --color-popover: #ffffff;
+  --color-border: var(--border-default);
+
+  --color-text: var(--text-primary);
+  --color-text-muted: var(--text-secondary);
+  --color-disabled: var(--text-disabled);
+  --color-placeholder: rgba(90, 90, 90, 0.75);
+
+  --color-info: var(--status-info);
+  --color-success: var(--status-success);
+  --color-warning: var(--status-warning);
+  --color-danger: #b91c1c;
+  --color-accent-tomato: var(--brand-tomato);
+
+  /* Focus & selection — light bluish grey (avoid red/pink “error” cues on interactive UI) */
+  --color-focus-accent: #6d8498;
+  --color-focus-ring-glow: rgba(105, 130, 155, 0.42);
+  --focus-ring: 0 0 0 3px var(--color-focus-ring-glow);
+  --focus-ring-info: var(--focus-ring);
+  --selection-background: color-mix(in srgb, rgb(165 188 210) 52%, var(--color-surface));
+  --selection-color: var(--color-text);
+
+  /* Typography */
+  --font-display: 'Bebas Neue', Impact, system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  font-size: 18px;
+  font-family: var(--font-body);
+  line-height: 1.55;
+  font-weight: 400;
+  color: var(--color-text);
+  background: var(--color-page-background);
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 6px 24px rgba(184, 134, 11, 0.12);
+  --shadow-primary: 0 4px 14px rgba(198, 40, 40, 0.25);
+
+  /* Motion */
+  --transition-fast: 0.15s ease;
+  --transition-ui: 0.12s ease;
+
+  /* --- Legacy aliases (backward compat; prefer semantic) --- */
+  --ketchup-red: var(--color-primary);
+  --header-red: var(--color-primary);
+  --mustard-yellow: var(--color-secondary);
+  --cream-white: var(--color-surface);
+  --diner-blue: var(--color-info);
+  --charcoal: var(--color-text);
+}

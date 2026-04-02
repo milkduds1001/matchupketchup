@@ -8,6 +8,8 @@
  *    and any double quotes inside are escaped as "" (RFC 4180-style).
  */
 
+import { cellKeyForCard } from './matchupKeys.js'
+
 function escapeCsvField(value) {
   const str = String(value ?? '')
   if (/[",\r\n]/.test(str)) {
@@ -65,19 +67,26 @@ function sortCardsForExport(cards, cardTypes = {}) {
 
 /**
  * Build the full CSV string from current cards, archetypes, matchup values, and optional card types.
+ * Each archetype exports two columns: "Name (play)" and "Name (draw)".
  */
 export function buildMatchupCsv(cards, archetypes, matchupValues, cardTypes = {}) {
-  const header = ['Card', 'Qty', 'Type', 'Group', ...(archetypes || []).map((a) => a.name)]
+  const header = ['Card', 'Qty', 'Type', 'Group']
+  for (const a of archetypes || []) {
+    header.push(`${a.name} (play)`, `${a.name} (draw)`)
+  }
   const rows = [header.map(escapeCsvField).join(',')]
   const sorted = sortCardsForExport(cards || [], cardTypes)
 
   for (const card of sorted) {
     const typeStr = cardTypes[card.name] ?? ''
     const groupStr = getCardGroup(typeStr)
-    const archetypeValues = (archetypes || []).map((arch) => {
-      const key = `${card.name}::${arch.name}`
-      return matchupValues[key] ?? ''
-    })
+    const archetypeValues = []
+    for (const arch of archetypes || []) {
+      archetypeValues.push(
+        matchupValues[cellKeyForCard(card, arch.name, 'play')] ?? '',
+        matchupValues[cellKeyForCard(card, arch.name, 'draw')] ?? ''
+      )
+    }
     const row = [card.name, card.quantity, typeStr, groupStr, ...archetypeValues]
     rows.push(row.map(escapeCsvField).join(','))
   }
@@ -89,7 +98,13 @@ export function buildMatchupCsv(cards, archetypes, matchupValues, cardTypes = {}
  * Trigger a file download of the matchup table as CSV.
  * Uses a temporary blob URL and a programmatic link click.
  */
-export function downloadMatchupCsv(cards, archetypes, matchupValues, cardTypes = {}, filename = 'matchup-table.csv') {
+export function downloadMatchupCsv(
+  cards,
+  archetypes,
+  matchupValues,
+  cardTypes = {},
+  filename = 'matchup-table.csv'
+) {
   const csv = buildMatchupCsv(cards, archetypes, matchupValues, cardTypes)
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)

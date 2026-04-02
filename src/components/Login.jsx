@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import logo from '../assets/matchupketchup_logo.svg'
 import './Login.css'
 
-export default function Login() {
+export default function Login({ onBack, onSuccess } = {}) {
   const { login, signup } = useAuth()
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [email, setEmail] = useState('')
@@ -14,12 +14,21 @@ export default function Login() {
     e.preventDefault()
     setError('')
     const result = mode === 'login' ? login(email, password) : signup(email, password)
-    if (result.error) setError(result.error)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    onSuccess?.()
   }
 
   return (
     <div className="login-page">
       <div className="login-card">
+        {onBack && (
+          <button type="button" className="login-back" onClick={onBack}>
+            ← Back to home
+          </button>
+        )}
         <img src={logo} alt="MatchupKetchup" className="login-logo" />
         <h1 className="login-title">MatchupKetchup</h1>
         <p className="login-subtitle">Sign in or create an account to manage decklists and metagames.</p>

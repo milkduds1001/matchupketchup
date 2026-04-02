@@ -4,17 +4,37 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: var(--cream-white);
+  background: var(--color-page-background);
+}
+
+.login-back {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  color: var(--color-info);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.login-back:hover {
+  text-decoration: underline;
 }
 
 .login-card {
   width: 100%;
   max-width: 380px;
-  background: var(--cream-white);
-  border: 3px solid var(--ketchup-red);
-  border-radius: 20px;
+  background: var(--color-surface);
+  border: 3px solid var(--color-primary);
+  border-radius: var(--radius-xl);
   padding: 2rem;
-  box-shadow: 0 12px 40px rgba(184, 134, 11, 0.2);
+  box-shadow: var(--shadow-card);
 }
 
 .login-logo {
@@ -24,22 +44,25 @@
   display: block;
   margin: 0 auto 1rem;
   object-fit: contain;
-  background: var(--cream-white);
+  background: var(--color-surface);
   mix-blend-mode: multiply;
 }
 
 .login-title {
   margin: 0 0 0.35rem 0;
-  font-size: 1.75rem;
+  font-size: clamp(1.75rem, 4vw, 2rem);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
   text-align: center;
-  color: var(--ketchup-red);
+  color: var(--color-primary);
 }
 
 .login-subtitle {
   margin: 0 0 1.5rem 0;
   font-size: 0.95rem;
-  color: var(--charcoal);
-  opacity: 0.85;
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
   text-align: center;
 }
 
@@ -55,57 +78,65 @@
   gap: 0.35rem;
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--charcoal);
+  font-family: var(--font-body);
+  color: var(--color-text);
 }
 
 .login-input {
   padding: 0.6rem 0.75rem;
   font-size: 1rem;
-  font-family: inherit;
-  border: 2px solid rgba(184, 134, 11, 0.35);
-  border-radius: 10px;
-  background: var(--cream-white);
-  color: var(--charcoal);
+  font-family: var(--font-body);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.login-input::placeholder {
+  color: var(--color-placeholder);
 }
 
 .login-input:focus {
   outline: none;
-  border-color: var(--ketchup-red);
-  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.2);
+  border-color: var(--color-focus-accent);
+  box-shadow: var(--focus-ring);
 }
 
 .login-hint {
   margin: 0;
   font-size: 0.8rem;
-  color: var(--charcoal);
-  opacity: 0.7;
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
 }
 
 .login-error {
   margin: 0;
   padding: 0.5rem 0.75rem;
-  background: rgba(184, 134, 11, 0.1);
-  border: 1px solid rgba(184, 134, 11, 0.4);
-  border-radius: 8px;
-  color: var(--ketchup-red);
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
   font-size: 0.9rem;
+  font-family: var(--font-body);
 }
 
 .login-btn {
   padding: 0.65rem 1rem;
   font-size: 1rem;
   font-weight: 700;
-  color: #fff;
-  background: var(--ketchup-red);
+  font-family: var(--font-body);
+  color: var(--color-on-primary);
+  background: var(--color-primary);
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(184, 134, 11, 0.35);
+  box-shadow: var(--shadow-primary);
 }
 
 .login-btn:hover {
-  background: var(--diner-blue);
-  box-shadow: 0 5px 18px rgba(42, 78, 155, 0.4);
+  background: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .login-toggle {
@@ -115,13 +146,14 @@
   padding: 0.5rem;
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--ketchup-red);
+  font-family: var(--font-body);
+  color: var(--color-primary);
   background: none;
   border: none;
   cursor: pointer;
 }
 
 .login-toggle:hover {
-  color: var(--diner-blue);
+  color: var(--color-info);
   text-decoration: underline;
 }

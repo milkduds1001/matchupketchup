@@ -1,0 +1,406 @@
+.metagame-grid-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.metagame-grid-loading {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.metagame-grid-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.metagame-grid-saved {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+.metagame-grid-defaults-meta,
+.metagame-grid-defaults-status {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
+}
+
+.metagame-grid-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  width: 100%;
+}
+
+.metagame-grid-table {
+  /* Intrinsic width: metagame columns stay fixed; table widens as columns are added */
+  width: max-content;
+  max-width: none;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  background: var(--color-card);
+  /* Wide enough for wrapped, centered column titles */
+  --metagame-col-w: 10.5rem;
+}
+
+.metagame-grid-table th,
+.metagame-grid-table td {
+  border: 1px solid var(--color-border);
+  padding: 0.35rem 0.4rem;
+  vertical-align: middle;
+}
+
+.metagame-grid-table tbody td {
+  padding: 0.22rem 0.35rem;
+}
+
+.metagame-grid-table tbody .metagame-grid-td-deck {
+  font-size: 0.82rem;
+}
+
+.metagame-grid-th-deck {
+  text-align: left;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  width: 1%;
+  white-space: nowrap;
+}
+
+.metagame-grid-th-meta {
+  width: var(--metagame-col-w);
+  min-width: var(--metagame-col-w);
+  max-width: var(--metagame-col-w);
+  box-sizing: border-box;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  padding: 0.4rem 0.35rem;
+  vertical-align: top;
+}
+
+.metagame-grid-th-add {
+  width: auto;
+  min-width: 7.5rem;
+  white-space: nowrap;
+  background: var(--color-surface);
+  border-left: 2px dashed var(--color-border);
+  vertical-align: top;
+}
+
+.metagame-grid-th-meta-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.3rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.metagame-grid-th-goldfish {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  text-align: center;
+  width: 100%;
+  padding: 0.15rem 0;
+}
+
+.metagame-grid-goldfish-title {
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+}
+
+.metagame-grid-goldfish-sub {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.92;
+}
+
+.metagame-grid-goldfish-updated {
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.25;
+  opacity: 0.88;
+  word-break: break-word;
+}
+
+.metagame-grid-locked-badge {
+  display: block;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.95;
+  line-height: 1.2;
+}
+
+.metagame-grid-locked-badge--inline {
+  margin-top: 0.15rem;
+}
+
+.metagame-grid-col-label {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 3.1rem;
+  margin: 0;
+  padding: 0.35rem 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  text-align: center;
+  resize: none;
+  border-radius: 6px;
+  border: 2px solid color-mix(in srgb, var(--color-on-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--color-on-primary) 12%, var(--color-primary));
+  color: var(--color-on-primary);
+  overflow: hidden;
+}
+
+.metagame-grid-col-label::placeholder {
+  color: color-mix(in srgb, var(--color-on-primary) 55%, transparent);
+}
+
+.metagame-grid-col-label:focus {
+  outline: none;
+  border-color: color-mix(in srgb, #c8d8e8 70%, var(--color-on-primary));
+  box-shadow: 0 0 0 2px rgba(200, 216, 232, 0.55);
+}
+
+.metagame-grid-th-meta-inner .metagame-grid-col-remove {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  line-height: 1;
+  border-radius: 6px;
+  border: none;
+  background: color-mix(in srgb, var(--color-on-primary) 18%, transparent);
+  color: var(--color-on-primary);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.metagame-grid-col-remove:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-on-primary) 35%, transparent);
+}
+
+.metagame-grid-col-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.metagame-grid-btn {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.metagame-grid-btn-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.metagame-grid-btn-primary:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.metagame-grid-btn-secondary {
+  background: var(--color-surface);
+  border-color: var(--color-secondary);
+  color: var(--color-primary);
+}
+
+.metagame-grid-btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-secondary-soft) 80%, var(--color-surface));
+}
+
+.metagame-grid-btn-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.metagame-grid-btn-add-col {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.55rem;
+  background: var(--color-secondary-soft);
+  border-color: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.metagame-grid-btn-add-col:hover {
+  background: color-mix(in srgb, var(--color-secondary) 25%, var(--color-secondary-soft));
+}
+
+.metagame-grid-td-deck {
+  width: 1%;
+  white-space: nowrap;
+  background: var(--color-surface);
+}
+
+.metagame-grid-deck-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: min(48vw, 36rem);
+}
+
+.metagame-grid-row-num {
+  flex-shrink: 0;
+  width: 1.35rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.metagame-grid-deck-name {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 10ch;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.88rem;
+  font-family: inherit;
+  border-radius: 8px;
+  border: 2px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text);
+}
+
+.metagame-grid-deck-name:focus {
+  outline: none;
+  border-color: var(--color-focus-accent);
+  box-shadow: var(--focus-ring);
+}
+
+.metagame-grid-deck-name[readonly],
+.metagame-grid-col-label[readonly],
+.metagame-grid-pct-input[readonly] {
+  opacity: 0.85;
+  cursor: default;
+}
+
+.metagame-grid-row-remove {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  line-height: 1;
+  border-radius: 6px;
+  border: none;
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-surface));
+  color: var(--color-danger);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.metagame-grid-row-remove:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 22%, var(--color-surface));
+}
+
+.metagame-grid-row-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.metagame-grid-td-pct {
+  width: var(--metagame-col-w);
+  min-width: var(--metagame-col-w);
+  max-width: var(--metagame-col-w);
+  box-sizing: border-box;
+  text-align: center;
+  background: var(--color-card);
+}
+
+.metagame-grid-pct-input {
+  width: 100%;
+  max-width: 4rem;
+  margin: 0 auto;
+  display: block;
+  padding: 0.2rem 0.25rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  text-align: center;
+  border-radius: 8px;
+  border: 2px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text);
+}
+
+.metagame-grid-pct-input:focus {
+  outline: none;
+  border-color: var(--color-focus-accent);
+  box-shadow: var(--focus-ring);
+}
+
+.metagame-grid-row-other td {
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color-secondary-soft) 70%, var(--color-surface));
+}
+
+.metagame-grid-row-add-deck td {
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 0.5rem 0.4rem;
+}
+
+.metagame-grid-td-other-label {
+  width: 1%;
+  white-space: nowrap;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  letter-spacing: 0.03em;
+  color: var(--color-text);
+}
+
+.metagame-grid-td-other {
+  width: var(--metagame-col-w);
+  min-width: var(--metagame-col-w);
+  max-width: var(--metagame-col-w);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.metagame-grid-td-spacer {
+  min-width: 7.5rem;
+  width: 7.5rem;
+  box-sizing: border-box;
+  border-left: 2px dashed var(--color-border);
+  background: var(--color-surface);
+}
+
+.metagame-grid-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

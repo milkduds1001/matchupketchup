@@ -5,6 +5,24 @@
   width: fit-content;
 }
 
+.matchup-table-wrapper--empty {
+  display: block;
+  width: 100%;
+  max-width: 42rem;
+  padding: 0.75rem 1rem;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-secondary-soft));
+}
+
+.matchup-table-empty-msg {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  opacity: 0.9;
+}
+
 .matchup-table {
   width: 100%;
   table-layout: fixed;
@@ -31,11 +49,6 @@
   min-width: 10ch;
 }
 
-.matchup-table .col-movement {
-  width: calc(100% / var(--table-cols, 5));
-  min-width: 7ch;
-}
-
 /* Keep header rows above body when scrolling: thead in its own stacking context */
 .matchup-table thead {
   position: relative;
@@ -49,10 +62,10 @@
   padding: 0.2rem 0.18rem;
   font-size: 0.72rem;
   font-weight: 700;
-  font-family: var(--font-display, 'Fredoka', system-ui, sans-serif);
-  background: var(--ketchup-red, #B8860B);
-  color: #fff;
-  border-bottom: 3px solid var(--mustard-yellow, #F4B400);
+  font-family: var(--font-display, 'Bebas Neue', system-ui, sans-serif);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-bottom: 3px solid var(--color-secondary);
   box-shadow: 0 2px 8px rgba(184, 134, 11, 0.3);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
 }
@@ -70,50 +83,66 @@
   white-space: nowrap;
 }
 
+/* Keep th as table-cell — never set display:flex on th/td or the table grid breaks */
 .matchup-table .th-arch-name {
   text-align: center;
   white-space: normal;
   word-break: break-word;
   line-height: 1.15;
   font-size: 0.95rem;
+  vertical-align: middle;
 }
 
-.matchup-table .th-movement {
-  text-align: center;
-  white-space: normal;
-  word-break: break-word;
-  font-size: 0.95rem;
-  padding: 0.2rem 0.15rem;
+.matchup-table .th-arch-name-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  width: 100%;
 }
 
-.matchup-table .movement-cell {
-  text-align: center;
-  font-size: 0.72rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--charcoal, #2B2B2B);
+.matchup-table .th-arch-name-lines {
+  display: block;
 }
 
-.matchup-table .movement-cell.movement-negative {
-  color: #b91c1c;
-}
-
-.matchup-table .movement-cell.movement-positive {
-  color: #0d6b0d;
-}
-
-/* Second header row (metagame %) sticks just below the first row so both stay visible when scrolling */
-.matchup-table thead tr:nth-child(2) th {
-  top: 1.85rem;
-}
-
-.matchup-table .th-arch-pct {
-  text-align: center;
+.matchup-table .th-arch-metagame-pct {
+  display: block;
   font-weight: 400;
-  font-size: 0.9rem;
-  opacity: 0.95;
-  padding-top: 0.08rem;
-  padding-bottom: 0.18rem;
+  font-size: 0.78rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  letter-spacing: 0.02em;
+  opacity: 0.92;
+  line-height: 1.2;
+}
+
+/* Alternating master columns (each archetype = play + draw): A / B / A / B */
+.matchup-table thead th.th-arch-master--a {
+  background: var(--color-primary);
+}
+
+.matchup-table thead th.th-arch-master--b {
+  background: color-mix(in srgb, var(--color-primary) 78%, rgb(0 0 0 / 0.22) 22%);
+}
+
+/* Vertical divider between archetype master columns (after “on the draw” / colspan name row) */
+.matchup-table thead th.matchup-arch-divider-after,
+.matchup-table tbody td.matchup-arch-divider-after,
+.matchup-table tfoot td.matchup-arch-divider-after {
+  border-right: 2px solid var(--color-secondary);
+}
+
+/* Play/draw subheaders stick below archetype name + metagame % row */
+.matchup-table thead tr:nth-child(2) th {
+  top: 2.75rem;
+}
+
+.matchup-table .th-playdraw-sub {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -122,7 +151,7 @@
   border-bottom: 1px solid rgba(184, 134, 11, 0.1);
   vertical-align: middle;
   text-align: center;
-  background: var(--cream-white, #FFF4E0);
+  background: var(--color-surface);
 }
 
 .matchup-table td:first-child {
@@ -143,7 +172,7 @@
 
 .matchup-table .card-type {
   font-size: 0.8em;
-  color: var(--charcoal, #2B2B2B);
+  color: var(--color-text);
   opacity: 0.75;
   white-space: nowrap;
 }
@@ -151,8 +180,8 @@
 .matchup-table .card-group {
   font-size: 0.8em;
   font-weight: 700;
-  font-family: var(--font-body, 'Nunito', sans-serif);
-  color: var(--charcoal, #2B2B2B);
+  font-family: var(--font-body, 'Inter', sans-serif);
+  color: var(--color-text);
   white-space: nowrap;
 }
 
@@ -168,32 +197,32 @@
   padding: 0.22rem 0.25rem;
   font-size: 0.78rem;
   font-weight: 600;
-  font-family: var(--font-body, 'Nunito', sans-serif);
+  font-family: var(--font-body, 'Inter', sans-serif);
   text-align: center;
   border-radius: 8px;
   border: 2px solid rgba(184, 134, 11, 0.25);
-  background: var(--cream-white, #FFF4E0);
-  color: var(--charcoal, #2B2B2B);
+  background: var(--color-surface);
+  color: var(--color-text);
   box-sizing: border-box;
 }
 
 .matchup-table .matchup-input--positive {
-  color: #0d6b0d;
+  color: var(--color-success);
   font-weight: 600;
   background-color: rgba(13, 107, 13, 0.18) !important;
 }
 
 .matchup-table .matchup-input--negative {
-  color: #b91c1c;
+  color: var(--color-danger);
   font-weight: 600;
   background-color: rgba(185, 28, 28, 0.18) !important;
 }
 
 .matchup-table .matchup-input:focus {
   outline: none;
-  border-color: var(--ketchup-red, #B8860B);
-  background: var(--cream-white, #FFF4E0);
-  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.25);
+  border-color: var(--color-focus-accent);
+  background: var(--color-surface);
+  box-shadow: var(--focus-ring);
 }
 
 .matchup-table .matchup-input::placeholder {
@@ -208,23 +237,23 @@
 }
 
 .matchup-table .matchup-section-main .matchup-section-label-cell {
-  top: 2.75rem; /* below sticky thead (two rows) */
+  top: 3.75rem; /* below sticky thead (archetype + metagame % + play/draw) */
 }
 
 .matchup-table .matchup-section-sideboard .matchup-section-label-cell {
-  top: 2.75rem;
+  top: 3.75rem;
 }
 
 .matchup-table .matchup-section-label-cell {
   padding: 0.4rem 0.5rem;
   font-size: 0.78rem;
   font-weight: 700;
-  font-family: var(--font-display, 'Fredoka', sans-serif);
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  background: var(--ketchup-red, #B8860B);
-  color: #fff;
-  border-top: 1px solid var(--mustard-yellow, #F4B400);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-top: 1px solid var(--color-secondary);
   border-bottom: 2px solid rgba(0, 0, 0, 0.15);
   box-shadow: 0 2px 8px rgba(184, 134, 11, 0.25);
 }
@@ -234,12 +263,12 @@
 }
 
 .matchup-table .matchup-section-sideboard .matchup-section-label-cell {
-  background: var(--diner-blue, #2A4E9B);
-  border-top: 2px solid var(--mustard-yellow, #F4B400);
+  background: var(--color-info);
+  border-top: 2px solid var(--color-secondary);
 }
 
 .matchup-table .sideboard-row td {
-  background: rgba(255, 244, 224, 0.7);
+  background: color-mix(in srgb, var(--color-secondary-soft) 55%, var(--color-surface));
 }
 
 /* Within the main deck, visual breaks for each group (Lands, Creatures & Planeswalkers, Other Spells) */
@@ -247,13 +276,13 @@
   padding: 0.28rem 0.5rem;
   font-size: 0.74rem;
   font-weight: 700;
-  font-family: var(--font-display, 'Fredoka', sans-serif);
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: rgba(255, 244, 224, 0.9);
-  color: var(--charcoal, #2B2B2B);
-  border-top: 1px solid rgba(184, 134, 11, 0.25);
-  border-bottom: 1px solid rgba(184, 134, 11, 0.15);
+  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
+  color: var(--color-text);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
 }
 
 /* Totals rows in tfoot - black text on light background for readability */
@@ -263,20 +292,20 @@
 
 .matchup-table .matchup-totals-row td {
   padding: 0.35rem 0.4rem;
-  border-top: 2px solid rgba(184, 134, 11, 0.25);
-  background: var(--cream-white, #FFF4E0);
+  border-top: 2px solid var(--color-border);
+  background: var(--color-surface);
   vertical-align: middle;
   visibility: visible;
 }
 
 .matchup-table .matchup-totals-row-in .matchup-totals-label,
 .matchup-table .matchup-totals-row-in .matchup-totals-number {
-  color: #0d6b0d;
+  color: var(--color-success);
 }
 
 .matchup-table .matchup-totals-row-out .matchup-totals-label,
 .matchup-table .matchup-totals-row-out .matchup-totals-number {
-  color: #b91c1c;
+  color: var(--color-danger);
 }
 
 .matchup-table .matchup-totals-label {
@@ -284,14 +313,14 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #111;
+  color: var(--color-text);
 }
 
 .matchup-table .matchup-totals-values {
   font-size: 0.85rem;
   font-weight: 700;
   text-align: center;
-  color: #111;
+  color: var(--color-text);
   white-space: nowrap;
 }
 
@@ -300,9 +329,3 @@
   display: inline-block;
 }
 
-/* Theme is unified (light panels); keep contrast tweaks if needed */
-@media (prefers-color-scheme: light) {
-  .matchup-table .th-arch-pct {
-    opacity: 0.95;
-  }
-}

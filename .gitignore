@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+
+# Local Python deps (do not commit)
+.pydeps/
 
 # Editor directories and files
 .vscode/*

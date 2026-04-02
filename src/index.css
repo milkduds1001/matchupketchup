@@ -1,27 +1,4 @@
-/* MatchupKetchup brand theme */
-:root {
-  --ketchup-red: #B8860B; /* dark golden (replaces prior red) */
-  --header-red: #C62828; /* red for all-caps step headers */
-  --mustard-yellow: #F4B400;
-  --cream-white: #FFF4E0;
-  --diner-blue: #2A4E9B;
-  --charcoal: #2B2B2B;
-
-  --font-display: 'Fredoka', 'Cooper Black', system-ui, sans-serif;
-  --font-body: 'Nunito', 'Montserrat', system-ui, sans-serif;
-
-  font-size: 20px;
-  font-family: var(--font-body);
-  line-height: 1.55;
-  font-weight: 400;
-  color: var(--charcoal);
-  background: var(--cream-white);
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@import './theme.css';
 
 *,
 *::before,
@@ -34,6 +11,17 @@ body {
   min-width: 320px;
   min-height: 100vh;
   width: 100%;
+  background: var(--color-page-background);
+}
+
+::selection {
+  background: var(--selection-background);
+  color: var(--selection-color);
+}
+
+::-moz-selection {
+  background: var(--selection-background);
+  color: var(--selection-color);
 }
 
 #root {
@@ -45,31 +33,43 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--charcoal);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: var(--color-text);
 }
 
 a {
   font-weight: 600;
-  color: var(--ketchup-red);
+  color: var(--color-primary);
   text-decoration: none;
+  transition: color var(--transition-fast);
 }
+
 a:hover {
-  color: var(--diner-blue);
+  color: var(--color-info);
 }
 
 button {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: none;
   padding: 0.55em 1.15em;
   font-size: 1em;
   font-weight: 700;
   font-family: var(--font-body);
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    transform var(--transition-ui),
+    box-shadow var(--transition-ui),
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
+
 button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(42, 78, 155, 0.25);
+  box-shadow: var(--shadow-md);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }

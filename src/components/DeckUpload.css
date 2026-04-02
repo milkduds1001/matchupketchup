@@ -4,20 +4,68 @@
   gap: 0.75rem;
 }
 
-.deck-upload-input {
-  font-size: 0.95rem;
-  font-family: var(--font-body, 'Nunito', sans-serif);
+.deck-upload-picker {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
   padding: 0.55rem 0.65rem;
-  cursor: pointer;
   border-radius: 10px;
   border: 2px dashed rgba(184, 134, 11, 0.5);
-  background: var(--cream-white, #FFF4E0);
-  color: var(--charcoal, #2B2B2B);
+  background: var(--color-surface);
+}
+
+.deck-upload-input-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.deck-upload-input-native:focus-visible + .deck-upload-choose-label {
+  outline: 2px solid var(--color-focus-accent);
+  outline-offset: 2px;
+}
+
+.deck-upload-choose-label {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  cursor: pointer;
+  border-radius: 8px;
+  border: 2px solid rgba(184, 134, 11, 0.45);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--color-text);
+}
+
+.deck-upload-choose-label:hover {
+  background: rgba(184, 134, 11, 0.12);
+  border-color: var(--color-focus-accent);
+}
+
+.deck-upload-filename {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-weight: 600;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .deck-upload-hint {
   margin: 0;
-  color: var(--charcoal, #2B2B2B);
+  color: var(--color-text);
   opacity: 0.85;
   font-size: 0.9rem;
 }
@@ -26,7 +74,7 @@
   padding: 0.15rem 0.4rem;
   border-radius: 6px;
   background: rgba(184, 134, 11, 0.1);
-  color: var(--ketchup-red, #B8860B);
+  color: var(--color-primary);
   font-size: 0.85em;
   font-weight: 600;
 }
@@ -36,14 +84,14 @@
   border-radius: 10px;
   background: rgba(254, 226, 226, 0.95);
   border: 2px solid rgba(220, 38, 38, 0.35);
-  color: #991b1b;
+  color: var(--color-danger);
   font-size: 0.9rem;
 }
 
 .deck-upload-errors strong {
   display: block;
   margin-bottom: 0.35rem;
-  font-family: var(--font-display, 'Fredoka', sans-serif);
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
 }
 
 .deck-upload-errors ul {

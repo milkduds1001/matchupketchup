@@ -2,11 +2,12 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  color: var(--color-text);
 }
 
 .matchup-summary-empty {
   margin: 0;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -14,18 +15,19 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  font-family: var(--font-body);
 }
 
 .matchup-summary-table th,
 .matchup-summary-table td {
   padding: 0.5rem 0.75rem;
   text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .matchup-summary-table th {
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-surface);
 }
 
 .matchup-summary-table th:first-child,
@@ -45,8 +47,11 @@
 
 .matchup-summary-block h3 {
   margin: 0 0 0.5rem 0;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: var(--color-primary);
 }
 
 .matchup-summary-block ol {
@@ -61,18 +66,5 @@
 @media (max-width: 500px) {
   .matchup-summary-extremes {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (prefers-color-scheme: light) {
-  .matchup-summary-empty {
-    color: rgba(0, 0, 0, 0.5);
-  }
-  .matchup-summary-table th,
-  .matchup-summary-table td {
-    border-bottom-color: rgba(0, 0, 0, 0.08);
-  }
-  .matchup-summary-table th {
-    background: rgba(0, 0, 0, 0.03);
   }
 }

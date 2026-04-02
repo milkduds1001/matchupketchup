@@ -1,5 +1,6 @@
 import React from 'react'
 import './MatchupTable.css'
+import { cellKeyForCard } from '../utils/matchupKeys.js'
 
 const TYPE_SORT_ORDER = [
   'Land',
@@ -69,29 +70,43 @@ function sortCardsByGroupThenTypeThenQtyThenName(cardList, cardTypes = {}) {
 
 const SHOW_TYPE_GROUP_COLUMNS = false
 
+/** Alternating band per archetype master column (play + draw) in thead. */
+function archMasterStripClass(archIndex) {
+  return archIndex % 2 === 0 ? 'th-arch-master th-arch-master--a' : 'th-arch-master th-arch-master--b'
+}
+
+/** Vertical rule between master columns (after each archetype except the last). */
+function archDividerAfterClass(archIndex, totalArches) {
+  if (totalArches <= 1 || archIndex >= totalArches - 1) return ''
+  return 'matchup-arch-divider-after'
+}
+
+function getColumnSlots(archetypes) {
+  const slots = []
+  for (const arch of archetypes) {
+    slots.push({ arch, role: 'play' })
+    slots.push({ arch, role: 'draw' })
+  }
+  return slots
+}
+
+function cellDisplayValue(values, card, slot) {
+  const { arch, role } = slot
+  return values[cellKeyForCard(card, arch.name, role)] ?? ''
+}
+
 /**
  * MatchupTable - Renders a table of cards with quantities and editable per-archetype cells.
- *
- * Props:
- *   cards - Array of objects: { id?, name, quantity, zone? } (zone is "main" or "sideboard")
- *   archetypes - Array of objects: { name, metagamePercent }
- *   values - Flat object keyed "cardName::archetypeName" with string values for each cell
- *   cardTypes - Optional object mapping card name -> type_line (from Scryfall)
- *   hideLands - If true, hide cards in the Lands group from the main deck section
- *   onChangeCell - Function(cardId, archetypeId, valueString) when a cell is edited
+ * Each archetype has two columns: on the play and on the draw.
  */
-function MatchupTable({ cards, archetypes, values = {}, cardTypes = {}, hideLands = false, onChangeCell }) {
-  function cellKey(card, archName) {
-    const zone = card.zone === 'sideboard' ? 'sideboard' : 'main'
-    if (zone === 'sideboard') {
-      // New format for sideboard keys so that main-deck and sideboard copies
-      // of the same card do not collide.
-      return `${card.name}::sideboard::${archName}`
-    }
-    // Legacy format for maindeck keys, kept for compatibility with existing data.
-    return `${card.name}::${archName}`
-  }
-
+function MatchupTable({
+  cards,
+  archetypes,
+  values = {},
+  cardTypes = {},
+  hideLands = false,
+  onChangeCell,
+}) {
   const mainDeckCards = sortCardsByGroupThenTypeThenQtyThenName(
     cards.filter((card) => card.zone !== 'sideboard'),
     cardTypes
@@ -102,93 +117,147 @@ function MatchupTable({ cards, archetypes, values = {}, cardTypes = {}, hideLand
   )
   const mainDeckTotal = mainDeckCards.reduce((sum, c) => sum + (Number(c.quantity) || 0), 0)
   const sideboardTotal = sideboardCards.reduce((sum, c) => sum + (Number(c.quantity) || 0), 0)
-  const safeArchetypes = Array.isArray(archetypes) ? archetypes : []
+  const safeArchetypes = (Array.isArray(archetypes) ? archetypes : []).filter(
+    (a) => a != null && typeof a === 'object' && typeof a.name === 'string' && a.name.trim()
+  )
+  const theadRowCount = 2
+  const columnSlots = getColumnSlots(safeArchetypes)
 
-  // Only count matchup cells that belong to the current deck (ignore stale keys after deck change).
-  // When hideLands, main-deck land rows are not shown — exclude those keys so totals match the table.
-  const validMatchupKeys = new Set()
-  for (const card of cards) {
-    if (!card?.name) continue
+  function cardRowVisible(card) {
     if (
       card.zone !== 'sideboard' &&
       hideLands &&
       getCardGroup(cardTypes[card.name]) === CARD_GROUP_LANDS
     ) {
-      continue
+      return false
     }
-    for (const arch of safeArchetypes) {
-      validMatchupKeys.add(cellKey(card, arch.name))
-    }
+    return true
   }
 
-  // Per-column totals: for each archetype, sum positive (total in) and negative (total out) in that column.
-  const totalInByArch = safeArchetypes.map((arch) => {
-    let sum = 0
-    if (values && typeof values === 'object' && !Array.isArray(values)) {
-      for (const key of Object.keys(values)) {
-        if (!validMatchupKeys.has(key)) continue
-        if (!key.endsWith(`::${arch.name}`)) continue
-        const raw = values[key]
+  function totalsForVisibleCards(cardList) {
+    return columnSlots.map((slot) => {
+      let sumIn = 0
+      let sumOut = 0
+      for (const card of cardList) {
+        if (!card?.name || !cardRowVisible(card)) continue
+        const raw = cellDisplayValue(values, card, slot)
         if (raw === undefined || raw === null || raw === '') continue
         const num = Number.parseInt(String(raw).trim(), 10)
-        if (Number.isNaN(num) || num <= 0) continue
-        sum += num
+        if (Number.isNaN(num)) continue
+        if (num > 0) sumIn += num
+        else if (num < 0) sumOut += num
       }
-    }
-    return sum
-  })
-  const totalOutByArch = safeArchetypes.map((arch) => {
-    let sum = 0
-    if (values && typeof values === 'object' && !Array.isArray(values)) {
-      for (const key of Object.keys(values)) {
-        if (!validMatchupKeys.has(key)) continue
-        if (!key.endsWith(`::${arch.name}`)) continue
-        const raw = values[key]
-        if (raw === undefined || raw === null || raw === '') continue
-        const num = Number.parseInt(String(raw).trim(), 10)
-        if (Number.isNaN(num) || num >= 0) continue
-        sum += num
-      }
-    }
-    return sum
-  })
+      return { sumIn, sumOut }
+    })
+  }
 
-  const displayCols = (SHOW_TYPE_GROUP_COLUMNS ? 4 : 2) + Math.max(1, archetypes.length) + 1
-  const labelColSpan = displayCols
+  const mainTotalsBySlot = totalsForVisibleCards([...mainDeckCards, ...sideboardCards])
+
+  const archCount = safeArchetypes.length
+  const archColumnCount = columnSlots.length
+  // Section labels / colspan must match real column count (card + qty + arch slots).
+  const labelColSpan = (SHOW_TYPE_GROUP_COLUMNS ? 4 : 2) + archColumnCount
+  // CSS min-width: avoid zero-width table when counts are tiny (defensive).
+  const displayCols = (SHOW_TYPE_GROUP_COLUMNS ? 4 : 2) + Math.max(1, archColumnCount)
   const totalsLabelColSpan = SHOW_TYPE_GROUP_COLUMNS ? 4 : 2
 
-  /** % use in known meta: quantity-weighted, excluding "Other". (inSum - outSum) as % of known meta only. */
-  function movementPct(card) {
-    const isOther = (arch) => String(arch?.name ?? '').trim().toLowerCase() === 'other'
-    const knownMetaPct = safeArchetypes
-      .filter((a) => !isOther(a))
-      .reduce((sum, a) => sum + (Number(a.metagamePercent) || 0), 0)
-    if (knownMetaPct <= 0) return 0
-
-    let inSum = 0
-    let outSum = 0
-    const qty = Number(card.quantity) || 0
-    if (qty <= 0 || !values || typeof values !== 'object') return 0
-    for (const arch of safeArchetypes) {
-      if (isOther(arch)) continue
-      const key = cellKey(card, arch.name)
-      const raw = values[key]
-      if (raw === undefined || raw === null || raw === '') continue
-      const num = Number.parseInt(String(raw).trim(), 10)
-      if (Number.isNaN(num)) continue
-      const pct = Number(arch.metagamePercent) || 0
-      const fraction = Math.min(1, Math.abs(num) / qty)
-      if (num > 0) inSum += fraction * pct
-      else if (num < 0) outSum += fraction * pct
-    }
-    const rawNet = inSum - outSum
-    return Math.round((rawNet / knownMetaPct) * 100)
+  function renderArchHeadCells() {
+    return safeArchetypes.map((arch, archIndex) => {
+      const name = arch.name || ''
+      const spaceIdx = name.indexOf(' ')
+      const twoLines = spaceIdx !== -1
+      const nameInner = twoLines ? (
+        <>{name.slice(0, spaceIdx)}<br />{name.slice(spaceIdx + 1)}</>
+      ) : (
+        name || '—'
+      )
+      const pct =
+        arch.metagamePercent != null && arch.metagamePercent !== ''
+          ? `(${arch.metagamePercent}%)`
+          : ''
+      return (
+        <th
+          key={arch.name}
+          colSpan={2}
+          className={`th-arch-name th-arch-name-split ${archMasterStripClass(archIndex)} ${archDividerAfterClass(archIndex, archCount)}`}
+        >
+          <div className="th-arch-name-inner">
+            <span className="th-arch-name-lines">{nameInner}</span>
+            {pct ? <span className="th-arch-metagame-pct">{pct}</span> : null}
+          </div>
+        </th>
+      )
+    })
   }
 
-  function formatMovement(value) {
-    if (value > 0) return `+${value}%`
-    if (value < 0) return `${value}%`
-    return '0%'
+  function renderPlayDrawSubrow() {
+    return (
+      <tr className="matchup-thead-playdraw">
+        {safeArchetypes.map((arch, archIndex) => (
+          <React.Fragment key={arch.name}>
+            <th className={`th-playdraw-sub ${archMasterStripClass(archIndex)}`}>Play</th>
+            <th
+              className={`th-playdraw-sub ${archMasterStripClass(archIndex)} ${archDividerAfterClass(archIndex, archCount)}`}
+            >
+              draw
+            </th>
+          </React.Fragment>
+        ))}
+      </tr>
+    )
+  }
+
+  function renderDataCells(card) {
+    return columnSlots.map((slot) => {
+      const { arch, role } = slot
+      const archIndex = safeArchetypes.findIndex((a) => a.name === arch.name)
+      const dividerAfter =
+        role === 'draw' && archIndex >= 0 ? archDividerAfterClass(archIndex, archCount) : ''
+      const primaryKey = cellKeyForCard(card, arch.name, role)
+      const value = cellDisplayValue(values, card, slot)
+      const num = value === '' ? NaN : Number.parseInt(String(value).trim(), 10)
+      const valueClass = Number.isNaN(num)
+        ? ''
+        : num > 0
+        ? 'matchup-input--positive'
+        : num < 0
+        ? 'matchup-input--negative'
+        : ''
+      const changeKey = primaryKey
+      const aria = `${card.name} vs ${arch.name} (${role === 'play' ? 'on the play' : 'on the draw'})`
+      return (
+        <td key={`${arch.name}-${role}`} className={dividerAfter || undefined}>
+          <input
+            className={`matchup-input ${valueClass}`}
+            type="text"
+            inputMode="numeric"
+            value={value}
+            onChange={(e) => {
+              const raw = e.target.value
+              if (raw !== '') {
+                const parsed = Number.parseInt(String(raw).trim(), 10)
+                if (!Number.isNaN(parsed) && Math.abs(parsed) > (Number(card.quantity) || 0)) {
+                  return
+                }
+              }
+              onChangeCell?.(changeKey, arch.name, raw)
+            }}
+            aria-label={aria}
+          />
+        </td>
+      )
+    })
+  }
+
+  if (safeArchetypes.length === 0) {
+    return (
+      <div className="matchup-table-wrapper matchup-table-wrapper--empty">
+        <p className="matchup-table-empty-msg">
+          No matchup columns yet. If you just picked a metagame, wait a moment — or open &quot;Add or modify metagames&quot;
+          and add at least one archetype with a name.
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -206,50 +275,27 @@ function MatchupTable({ cards, archetypes, values = {}, cardTypes = {}, hideLand
               <col className="col-group" />
             </>
           )}
-          {archetypes.map((arch) => (
-            <col key={arch.name} className="col-arch" />
+          {columnSlots.map((slot) => (
+            <col key={`${slot.arch.name}-${slot.role}`} className="col-arch" />
           ))}
-          <col className="col-movement" />
         </colgroup>
         <thead>
           <tr>
-            <th rowSpan={2} className="th-card">
+            <th rowSpan={theadRowCount} className="th-card">
               Card
             </th>
-            <th rowSpan={2} className="th-qty">
+            <th rowSpan={theadRowCount} className="th-qty">
               Qty
             </th>
             {SHOW_TYPE_GROUP_COLUMNS && (
               <>
-                <th rowSpan={2} className="th-type">Type</th>
-                <th rowSpan={2} className="th-group">Group</th>
+                <th rowSpan={theadRowCount} className="th-type">Type</th>
+                <th rowSpan={theadRowCount} className="th-group">Group</th>
               </>
             )}
-            {archetypes.map((arch) => {
-              const name = arch.name || ''
-              const spaceIdx = name.indexOf(' ')
-              const twoLines = spaceIdx !== -1
-              return (
-                <th key={arch.name} className="th-arch-name">
-                  {twoLines ? (
-                    <>{(name.slice(0, spaceIdx))}<br />{name.slice(spaceIdx + 1)}</>
-                  ) : (
-                    name || '—'
-                  )}
-                </th>
-              )
-            })}
-            <th rowSpan={2} className="th-movement">
-              % change
-            </th>
+            {renderArchHeadCells()}
           </tr>
-          <tr>
-            {archetypes.map((arch) => (
-              <th key={arch.name} className="th-arch-pct">
-                ({arch.metagamePercent}%)
-              </th>
-            ))}
-          </tr>
+          {renderPlayDrawSubrow()}
         </thead>
         <tbody>
           <tr className="matchup-section-label matchup-section-main">
@@ -272,9 +318,7 @@ function MatchupTable({ cards, archetypes, values = {}, cardTypes = {}, hideLand
                   </td>
                 </tr>
                 {!hideRowsForGroup &&
-                  cardsInGroup.map((card) => {
-                    const movement = movementPct(card)
-                    return (
+                  cardsInGroup.map((card) => (
                     <tr key={card.id ?? card.name}>
                       <td className="card-name">{card.name}</td>
                       <td>{card.quantity}</td>
@@ -284,47 +328,9 @@ function MatchupTable({ cards, archetypes, values = {}, cardTypes = {}, hideLand
                           <td className="card-group">{getCardGroup(cardTypes[card.name])}</td>
                         </>
                       )}
-                      {archetypes.map((arch) => {
-                        const primaryKey = cellKey(card, arch.name)
-                        const legacyKey =
-                          card.zone === 'sideboard' ? `${card.name}::${arch.name}` : primaryKey
-                        const value = values[primaryKey] ?? values[legacyKey] ?? ''
-                        const num = value === '' ? NaN : Number.parseInt(String(value).trim(), 10)
-                        const valueClass = Number.isNaN(num)
-                          ? ''
-                          : num > 0
-                          ? 'matchup-input--positive'
-                          : num < 0
-                          ? 'matchup-input--negative'
-                          : ''
-                        return (
-                          <td key={arch.name}>
-                            <input
-                              className={`matchup-input ${valueClass}`}
-                              type="text"
-                              inputMode="numeric"
-                              value={value}
-                              onChange={(e) => {
-                                const raw = e.target.value
-                                if (raw !== '') {
-                                  const parsed = Number.parseInt(String(raw).trim(), 10)
-                                  if (!Number.isNaN(parsed) && Math.abs(parsed) > (Number(card.quantity) || 0)) {
-                                    return
-                                  }
-                                }
-                                onChangeCell?.(primaryKey, arch.name, raw)
-                              }}
-                              aria-label={`${card.name} vs ${arch.name}`}
-                            />
-                          </td>
-                        )
-                      })}
-                      <td className={`movement-cell ${movement > 0 ? 'movement-positive' : movement < 0 ? 'movement-negative' : ''}`}>
-                        {formatMovement(movement)}
-                      </td>
+                      {renderDataCells(card)}
                     </tr>
-                  )
-                  })}
+                  ))}
               </React.Fragment>
             )
           })}
@@ -337,9 +343,7 @@ function MatchupTable({ cards, archetypes, values = {}, cardTypes = {}, hideLand
             </tr>
           )}
 
-          {sideboardCards.map((card) => {
-            const movement = movementPct(card)
-            return (
+          {sideboardCards.map((card) => (
             <tr key={card.id ?? card.name} className="sideboard-row">
               <td className="card-name">{card.name}</td>
               <td>{card.quantity}</td>
@@ -349,77 +353,58 @@ function MatchupTable({ cards, archetypes, values = {}, cardTypes = {}, hideLand
                   <td className="card-group">{getCardGroup(cardTypes[card.name])}</td>
                 </>
               )}
-              {archetypes.map((arch) => {
-                const primaryKey = cellKey(card, arch.name)
-                /* Sideboard cells use only the sideboard key — do not fall back to main-deck key */
-                const value = values[primaryKey] ?? ''
-                const num = value === '' ? NaN : Number.parseInt(String(value).trim(), 10)
-                const valueClass = Number.isNaN(num) ? '' : num > 0 ? 'matchup-input--positive' : num < 0 ? 'matchup-input--negative' : ''
-                return (
-                  <td key={arch.name}>
-                    <input
-                      className={`matchup-input ${valueClass}`}
-                      type="text"
-                      inputMode="numeric"
-                      value={value}
-                      onChange={(e) => {
-                        const raw = e.target.value
-                        if (raw !== '') {
-                          const parsed = Number.parseInt(String(raw).trim(), 10)
-                          if (!Number.isNaN(parsed) && Math.abs(parsed) > (Number(card.quantity) || 0)) {
-                            return
-                          }
-                        }
-                        onChangeCell?.(primaryKey, arch.name, raw)
-                      }}
-                      aria-label={`${card.name} vs ${arch.name} (sideboard)`}
-                    />
-                  </td>
-                )
-              })}
-              <td className={`movement-cell ${movement > 0 ? 'movement-positive' : movement < 0 ? 'movement-negative' : ''}`}>
-                {formatMovement(movement)}
-              </td>
+              {renderDataCells(card)}
             </tr>
-          )
-          })}
+          ))}
         </tbody>
         <tfoot>
           <tr className="matchup-totals-row matchup-totals-row-in">
             <td className="matchup-totals-label" colSpan={totalsLabelColSpan}>
               Total in
             </td>
-            {safeArchetypes.map((arch, i) => {
-              const hasAnyEntry = totalInByArch[i] !== 0 || totalOutByArch[i] !== 0
+            {columnSlots.map((slot, i) => {
+              const { sumIn, sumOut } = mainTotalsBySlot[i] || { sumIn: 0, sumOut: 0 }
+              const hasAnyEntry = sumIn !== 0 || sumOut !== 0
+              const ai = safeArchetypes.findIndex((a) => a.name === slot.arch.name)
+              const divAfter =
+                slot.role === 'draw' && ai >= 0 ? archDividerAfterClass(ai, archCount) : ''
               return (
-                <td key={arch.name} className="matchup-totals-values">
+                <td
+                  key={`${slot.arch.name}-${slot.role}-in`}
+                  className={`matchup-totals-values${divAfter ? ` ${divAfter}` : ''}`}
+                >
                   {hasAnyEntry ? (
-                    <span className="matchup-totals-number">{totalInByArch[i]}</span>
+                    <span className="matchup-totals-number">{sumIn}</span>
                   ) : (
                     ''
                   )}
                 </td>
               )
             })}
-            <td className="matchup-totals-values" />
           </tr>
           <tr className="matchup-totals-row matchup-totals-row-out">
             <td className="matchup-totals-label" colSpan={totalsLabelColSpan}>
               Total out
             </td>
-            {safeArchetypes.map((arch, i) => {
-              const hasAnyEntry = totalInByArch[i] !== 0 || totalOutByArch[i] !== 0
+            {columnSlots.map((slot, i) => {
+              const { sumIn, sumOut } = mainTotalsBySlot[i] || { sumIn: 0, sumOut: 0 }
+              const hasAnyEntry = sumIn !== 0 || sumOut !== 0
+              const ai = safeArchetypes.findIndex((a) => a.name === slot.arch.name)
+              const divAfter =
+                slot.role === 'draw' && ai >= 0 ? archDividerAfterClass(ai, archCount) : ''
               return (
-                <td key={arch.name} className="matchup-totals-values">
+                <td
+                  key={`${slot.arch.name}-${slot.role}-out`}
+                  className={`matchup-totals-values${divAfter ? ` ${divAfter}` : ''}`}
+                >
                   {hasAnyEntry ? (
-                    <span className="matchup-totals-number">{totalOutByArch[i]}</span>
+                    <span className="matchup-totals-number">{Math.abs(sumOut)}</span>
                   ) : (
                     ''
                   )}
                 </td>
               )
             })}
-            <td className="matchup-totals-values" />
           </tr>
         </tfoot>
       </table>
