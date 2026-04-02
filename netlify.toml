@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Same-origin /api/metagame-defaults as in dev (Vite) and Vercel
+[[redirects]]
+  from = "/api/metagame-defaults"
+  to = "/.netlify/functions/metagame-defaults"
+  status = 200
