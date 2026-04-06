@@ -101,17 +101,18 @@
 }
 
 .home-hero-brand .home-hero-logo {
-  width: min(100%, 26rem);
+  width: min(100%, 36rem);
   max-width: 100%;
   height: auto;
-  max-height: clamp(10rem, 32vw, 16rem);
+  max-height: clamp(13rem, 40vw, 22rem);
   object-fit: contain;
   display: block;
 }
 
 .home-hero-lead {
   margin: 0 0 1.5rem 0;
-  font-size: 1.05rem;
+  font-size: clamp(1.35rem, 2.8vw, 1.9rem);
+  font-weight: 800;
   font-family: var(--font-body);
   line-height: 1.55;
   color: var(--color-text);
@@ -183,4 +184,13 @@
 
 @media (max-width: 640px) {
   .home-main { padding: 1.5rem 1rem 2rem; }
+
+  .home-hero-brand .home-hero-logo {
+    width: min(100%, 28rem);
+    max-height: 14rem;
+  }
+
+  .home-hero-lead {
+    font-size: 1.2rem;
+  }
 }
