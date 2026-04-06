@@ -29,9 +29,9 @@ export default function Login({ onBack, onSuccess } = {}) {
             ← Back to home
           </button>
         )}
-        <img src={logo} alt="MatchupKetchup" className="login-logo" />
-        <h1 className="login-title">MatchupKetchup</h1>
-        <p className="login-subtitle">Sign in or create an account to manage decklists and metagames.</p>
+        <div className="login-logo-wrap" aria-hidden="true">
+          <img src={logo} alt="" className="login-logo" />
+        </div>
 
         <form onSubmit={handleSubmit} className="login-form">
           <label className="login-label">

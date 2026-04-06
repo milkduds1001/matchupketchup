@@ -37,32 +37,24 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Wide asset includes wordmark on the right; crop to the mascot so no baked-in title/subtitle shows. */
+.login-logo-wrap {
+  width: min(100%, 200px);
+  height: clamp(108px, 30vw, 148px);
+  margin: 0 auto 1rem;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
 .login-logo {
   width: 100%;
-  max-width: 340px;
-  height: auto;
+  height: 100%;
   display: block;
-  margin: 0 auto 1rem;
-  object-fit: contain;
+  margin: 0;
+  max-width: none;
+  object-fit: cover;
+  object-position: left center;
   background: transparent;
-}
-
-.login-title {
-  margin: 0 0 0.35rem 0;
-  font-size: clamp(1.75rem, 4vw, 2rem);
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  text-align: center;
-  color: var(--color-primary);
-}
-
-.login-subtitle {
-  margin: 0 0 1.5rem 0;
-  font-size: 0.95rem;
-  font-family: var(--font-body);
-  color: var(--color-text-muted);
-  text-align: center;
 }
 
 .login-form {
