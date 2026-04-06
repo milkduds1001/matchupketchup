@@ -8,8 +8,23 @@ const GOLD_FISH_FORMAT_PATHS = {
   Legacy: 'legacy',
 }
 
+const SNAPSHOT_WINDOWS = [
+  { key: '7', label: 'Last 7 Days', period: '7' },
+  { key: '14', label: 'Last 14 Days', period: '14' },
+  { key: '30', label: 'Last 30 Days', period: '30' },
+]
+
 let memoryCache = null
 let cacheUpdatedAt = 0
+
+function emptyFormatsMap() {
+  return {
+    Standard: [],
+    Pioneer: [],
+    Modern: [],
+    Legacy: [],
+  }
+}
 
 function clampPercent(value) {
   const n = Number.parseFloat(String(value ?? '').replace('%', '').trim())
@@ -87,52 +102,155 @@ function extractArchetypesFromHtml(html) {
   return uniqueByName(rows).slice(0, MAX_ARCHETYPES_PER_FORMAT)
 }
 
-async function fetchFormatFromGoldfish(formatName, pathSlug) {
+/** Browser-like headers — some CDNs block non-browser UAs from serverless IPs (e.g. Vercel). */
+const GOLDFISH_FETCH_HEADERS = {
+  'user-agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'accept-language': 'en-US,en;q=0.9',
+  referer: 'https://www.mtggoldfish.com/',
+}
+
+async function fetchGoldfishMetagamePage(pathSlug) {
   const url = `https://www.mtggoldfish.com/metagame/${pathSlug}#paper`
   const response = await fetch(url, {
-    headers: {
-      'user-agent': 'MTG-SideboardGuide/1.0 (metagame defaults fetcher)',
-      accept: 'text/html,application/xhtml+xml',
-    },
+    headers: GOLDFISH_FETCH_HEADERS,
   })
   if (!response.ok) {
-    throw new Error(`MTG Goldfish request failed for ${formatName} (${response.status})`)
+    throw new Error(`MTG Goldfish request failed (${response.status})`)
+  }
+  const html = await response.text()
+  const csrfToken = html.match(/name="csrf-token" content="([^"]+)"/)?.[1] || ''
+  const formToken = html.match(/name="authenticity_token" value="([^"]+)"/)?.[1] || ''
+  const cookie = response.headers.get('set-cookie') || ''
+  return { html, csrfToken, formToken, cookie }
+}
+
+async function fetchArchetypesForPeriodViaResort(pathSlug, period, bootstrap) {
+  const body = new URLSearchParams({
+    authenticity_token: bootstrap.formToken || bootstrap.csrfToken || '',
+    period: String(period),
+    mformat: String(pathSlug),
+    subformat: '',
+    page: '',
+    type: 'paper',
+  })
+  const response = await fetch('https://www.mtggoldfish.com/metagame/re_sort', {
+    method: 'POST',
+    headers: {
+      ...GOLDFISH_FETCH_HEADERS,
+      accept: 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml',
+      'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'x-requested-with': 'XMLHttpRequest',
+      'x-csrf-token': bootstrap.csrfToken || bootstrap.formToken || '',
+      origin: 'https://www.mtggoldfish.com',
+      referer: `https://www.mtggoldfish.com/metagame/${pathSlug}#paper`,
+      cookie: bootstrap.cookie,
+    },
+    body: body.toString(),
+  })
+  if (!response.ok) {
+    throw new Error(`MTG Goldfish re_sort failed (${response.status})`)
   }
   const html = await response.text()
   const archetypes = extractArchetypesFromHtml(html)
   if (archetypes.length === 0) {
-    throw new Error(`No archetypes parsed for ${formatName}`)
+    throw new Error(`No archetypes parsed`)
   }
   return archetypes
 }
 
-async function fetchFreshPayload() {
-  const entries = await Promise.all(
-    Object.entries(GOLD_FISH_FORMAT_PATHS).map(async ([formatName, pathSlug]) => {
-      const archetypes = await fetchFormatFromGoldfish(formatName, pathSlug)
-      return [formatName, archetypes]
-    })
-  )
-  const formats = Object.fromEntries(entries)
-  return {
-    source: 'MTG Goldfish',
-    snapshotLabel: 'Last 30 Days',
-    fetchedAt: new Date().toISOString(),
-    formats,
+async function fetchFormatSnapshots(formatName, pathSlug) {
+  const bootstrap = await fetchGoldfishMetagamePage(pathSlug)
+  const periodResults = {}
+  const periodErrors = []
+
+  for (const window of SNAPSHOT_WINDOWS) {
+    try {
+      if (window.key === '30') {
+        periodResults[window.key] = extractArchetypesFromHtml(bootstrap.html)
+      } else {
+        periodResults[window.key] = await fetchArchetypesForPeriodViaResort(pathSlug, window.period, bootstrap)
+      }
+      if (!Array.isArray(periodResults[window.key]) || periodResults[window.key].length === 0) {
+        throw new Error('No archetypes parsed')
+      }
+    } catch (error) {
+      periodResults[window.key] = []
+      const msg = error instanceof Error ? error.message : String(error)
+      periodErrors.push(`${window.label}: ${msg}`)
+    }
   }
+
+  return { formatName, periodResults, periodErrors }
 }
 
 function buildFallbackPayload() {
+  const snapshots = {}
+  for (const window of SNAPSHOT_WINDOWS) {
+    snapshots[window.key] = {
+      key: window.key,
+      label: window.label,
+      fetchedAt: new Date(0).toISOString(),
+      formats: emptyFormatsMap(),
+    }
+  }
   return {
     source: 'MTG Goldfish',
     snapshotLabel: 'Last 30 Days',
     fetchedAt: new Date(0).toISOString(),
-    formats: {
-      Standard: [],
-      Pioneer: [],
-      Modern: [],
-      Legacy: [],
-    },
+    snapshots,
+    formats: snapshots['30'].formats,
+  }
+}
+
+async function fetchFreshPayload() {
+  const entries = Object.entries(GOLD_FISH_FORMAT_PATHS)
+  const settled = await Promise.allSettled(
+    entries.map(([formatName, pathSlug]) => fetchFormatSnapshots(formatName, pathSlug))
+  )
+
+  const snapshotByPeriod = {}
+  for (const window of SNAPSHOT_WINDOWS) {
+    snapshotByPeriod[window.key] = {
+      key: window.key,
+      label: window.label,
+      fetchedAt: new Date().toISOString(),
+      formats: emptyFormatsMap(),
+    }
+  }
+
+  const failMessages = []
+  settled.forEach((result, i) => {
+    const formatName = entries[i][0]
+    if (result.status === 'fulfilled') {
+      for (const window of SNAPSHOT_WINDOWS) {
+        snapshotByPeriod[window.key].formats[formatName] = result.value.periodResults[window.key] || []
+      }
+      for (const err of result.value.periodErrors) {
+        failMessages.push(`${formatName} ${err}`)
+      }
+    } else {
+      const msg = result.reason instanceof Error ? result.reason.message : String(result.reason)
+      failMessages.push(`${formatName}: ${msg}`)
+    }
+  })
+
+  const anyData = SNAPSHOT_WINDOWS.some((window) =>
+    Object.values(snapshotByPeriod[window.key].formats).some((list) => Array.isArray(list) && list.length > 0)
+  )
+  if (!anyData) {
+    throw new Error(failMessages.join(' | ') || 'MTG Goldfish returned no archetypes for any format/period')
+  }
+
+  return {
+    source: 'MTG Goldfish',
+    snapshotLabel: 'Last 30 Days',
+    fetchedAt: snapshotByPeriod['30'].fetchedAt,
+    snapshots: snapshotByPeriod,
+    // Backward compatibility for older clients.
+    formats: snapshotByPeriod['30'].formats,
+    ...(failMessages.length ? { warning: failMessages.join(' ') } : {}),
   }
 }
 
@@ -153,20 +271,40 @@ export async function getMetagameDefaultsPayload(options = {}) {
     cacheUpdatedAt = now
     return { ...fresh, cached: false }
   } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Metagame feed unavailable'
+    if (bypassCache) {
+      return {
+        ...buildFallbackPayload(),
+        cached: false,
+        unavailable: true,
+        error: msg,
+        refreshFailed: true,
+      }
+    }
     const safeFallback = memoryCache || buildFallbackPayload()
     return {
       ...safeFallback,
       cached: true,
       unavailable: true,
-      error: error instanceof Error ? error.message : 'Metagame feed unavailable',
+      error: msg,
     }
   }
 }
 
+/**
+ * Vercel usually sets req.query; some Node runtimes only expose the raw path on req.url.
+ */
 function wantsRefreshBypass(req) {
-  const q = req.query || {}
-  const v = String(q.refresh ?? q.nocache ?? '').toLowerCase()
-  return v === '1' || v === 'true'
+  let v = req.query?.refresh ?? req.query?.nocache
+  if (v == null && typeof req.url === 'string') {
+    const qIndex = req.url.indexOf('?')
+    if (qIndex >= 0) {
+      const params = new URLSearchParams(req.url.slice(qIndex + 1))
+      v = params.get('refresh') ?? params.get('nocache')
+    }
+  }
+  const s = String(v ?? '').toLowerCase()
+  return s === '1' || s === 'true'
 }
 
 export default async function handler(req, res) {

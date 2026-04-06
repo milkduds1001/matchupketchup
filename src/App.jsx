@@ -9,6 +9,7 @@ import MetagameGridEditor from './components/MetagameGridEditor.jsx'
 import {
   DEFAULT_FORMATS,
   getFormats,
+  ensureMetagameGrid,
   saveFormats,
   getDecklists,
   getMetagames,
@@ -18,6 +19,10 @@ import {
   deleteDecklist,
 } from './utils/storage.js'
 import { migrateLegacyUnifiedToPlayDraw } from './utils/matchupKeys.js'
+import {
+  syncGoldfishDefaultsForAllFormats,
+  syncGoldfishDefaultsForFormat,
+} from './utils/syncGoldfishDefaults.js'
 import { setPrintPageLayout } from './utils/printPage.js'
 import { copyDeckAndOpenDecklistOrg } from './utils/decklistOrgExport.js'
 import { fetchCardMetadata, fetchCardImageUrlByName, searchCardsByName } from './utils/scryfall.js'
@@ -211,6 +216,7 @@ function Dashboard({ onGoHome }) {
 
   const refreshMetagames = useCallback(() => {
     if (!userId) return
+    for (const f of getFormats(userId)) ensureMetagameGrid(userId, f)
     const list = getMetagames(userId)
     setMetagames(list)
     setSelectedMetagameId((prev) => {
@@ -221,7 +227,9 @@ function Dashboard({ onGoHome }) {
 
   useEffect(() => {
     if (!userId) return
+    let cancelled = false
     const availableFormats = getFormats(userId)
+    for (const f of availableFormats) ensureMetagameGrid(userId, f)
     setFormats(availableFormats)
     setDeckFormat((prev) => (availableFormats.includes(prev) ? prev : availableFormats[0] || DEFAULT_FORMATS[0]))
     setManageMetaFormat((prev) => (availableFormats.includes(prev) ? prev : availableFormats[0] || DEFAULT_FORMATS[0]))
@@ -232,6 +240,25 @@ function Dashboard({ onGoHome }) {
       if (!prev) return prev
       return metaList.some((m) => m.id === prev) ? prev : null
     })
+
+    ;(async () => {
+      try {
+        await syncGoldfishDefaultsForAllFormats(userId, { refresh: false })
+      } catch {
+        /* ignore — offline or API unavailable */
+      }
+      if (cancelled) return
+      for (const f of getFormats(userId)) ensureMetagameGrid(userId, f)
+      const list = getMetagames(userId)
+      setMetagames(list)
+      setSelectedMetagameId((prev) => {
+        if (!prev) return prev
+        return list.some((m) => m.id === prev) ? prev : null
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [userId])
 
   const deckMigrationSignature = useMemo(() => {
@@ -298,6 +325,25 @@ function Dashboard({ onGoHome }) {
 
   const selectedDecklist = decklists.find((d) => d.id === selectedDecklistId)
   const selectedMetagame = metagames.find((m) => m.id === selectedMetagameId)
+
+  /** Keep locked Goldfish columns aligned with the selected deck’s format (fixes stale Standard data after switching to Modern, etc.). */
+  useEffect(() => {
+    if (!userId || !selectedDecklist?.format) return
+    let cancelled = false
+    const fmt = selectedDecklist.format
+    ;(async () => {
+      try {
+        await syncGoldfishDefaultsForFormat(userId, fmt, { refresh: false })
+      } catch {
+        /* ignore */
+      }
+      if (!cancelled) refreshMetagames()
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [userId, selectedDecklist?.format, refreshMetagames])
+
   const archetypes = useMemo(() => {
     const raw = selectedMetagame?.archetypes
     if (!Array.isArray(raw)) return []

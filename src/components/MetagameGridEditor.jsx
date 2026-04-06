@@ -3,9 +3,8 @@ import {
   ensureMetagameGrid,
   saveMetagameGrid,
   applyLockedGoldfishDefaults,
-  getLockedMetagameColumnId,
+  getLockedMetagameColumnIds,
   isLockedMetagameRow,
-  GOLDFISH_COLUMN_LABEL,
 } from '../utils/storage.js'
 import { fetchMetagameDefaults, getDefaultsForFormat } from '../utils/metagameDefaults.js'
 import './MetagameGridEditor.css'
@@ -39,6 +38,18 @@ function columnSum(grid, colId) {
   return sum
 }
 
+/** Status line after defaults load or refresh (warnings + static-snapshot hint). */
+function formatDefaultsLoadedStatus(data) {
+  const parts = []
+  if (data.warning) parts.push(`Some formats failed to load: ${data.warning}`)
+  if (data.fromStaticSnapshot) {
+    parts.push(
+      'Using build-time metagame snapshot (no live API on this host). “Refresh MTG Goldfish” needs serverless hosting — see docs/DEPLOYMENT.md.'
+    )
+  }
+  return parts.join(' ').trim()
+}
+
 /**
  * MetagameGridEditor — rows are deck names, columns are metagame scenarios (each synced to a saved metagame).
  */
@@ -49,6 +60,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
   const [defaultsStatus, setDefaultsStatus] = useState('')
   const [defaultsLoadedFor, setDefaultsLoadedFor] = useState('')
   const [goldfishRefreshing, setGoldfishRefreshing] = useState(false)
+  const lockedColumnIds = getLockedMetagameColumnIds(grid || {})
 
   useEffect(() => {
     if (!userId || !format) {
@@ -93,18 +105,24 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
         if (cancelled) return
         const data = getDefaultsForFormat(payload, format)
         if (!Array.isArray(data.archetypes) || data.archetypes.length === 0) {
-          setDefaultsStatus('MTG Goldfish data is temporarily unavailable for this format.')
+          setDefaultsStatus(
+            data.fromStaticSnapshot && data.error
+              ? `Metagame snapshot is empty or failed at build time: ${data.error} Rebuild with network access or use a host with /api/metagame-defaults.`
+              : data.error
+                ? `MTG Goldfish: ${data.error} Open your site’s /api/metagame-defaults?refresh=1 in a new tab to inspect the raw response.`
+                : 'MTG Goldfish data is temporarily unavailable for this format. Try Refresh, or open /api/metagame-defaults?refresh=1 in a new tab.'
+          )
           return
         }
         setGrid((prev) => {
           if (!prev) return prev
-          const next = applyLockedGoldfishDefaults(prev, data)
+          const next = applyLockedGoldfishDefaults(prev, data, format)
           if (JSON.stringify(next) === JSON.stringify(prev)) return prev
           saveMetagameGrid(userId, format, next)
           onSynced?.()
           return next
         })
-        setDefaultsStatus('')
+        setDefaultsStatus(formatDefaultsLoadedStatus(data))
       } catch (error) {
         if (cancelled) return
         setDefaultsStatus(error instanceof Error ? error.message : 'Could not load MTG Goldfish data.')
@@ -114,23 +132,33 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
   }, [userId, format, grid, defaultsLoadedFor, onSynced])
 
   const handleRefreshGoldfish = useCallback(async () => {
-    if (!userId || !format || !grid) return
+    if (!userId || !format) return
     setGoldfishRefreshing(true)
     setDefaultsStatus('')
     try {
       const payload = await fetchMetagameDefaults({ refresh: true })
       const data = getDefaultsForFormat(payload, format)
       if (!Array.isArray(data.archetypes) || data.archetypes.length === 0) {
-        setDefaultsStatus('MTG Goldfish data is temporarily unavailable for this format.')
+        setDefaultsStatus(
+          data.fromStaticSnapshot && data.error
+            ? `Metagame snapshot is empty: ${data.error}`
+            : data.error
+              ? `MTG Goldfish: ${data.error} Open /api/metagame-defaults?refresh=1 in a new tab to inspect the response.`
+              : 'MTG Goldfish data is temporarily unavailable for this format. Open /api/metagame-defaults?refresh=1 to verify the API.'
+        )
         return
       }
       setGrid((prev) => {
         if (!prev) return prev
-        const next = applyLockedGoldfishDefaults(prev, data)
+        const next = applyLockedGoldfishDefaults(prev, data, format)
         saveMetagameGrid(userId, format, next)
         onSynced?.()
         return next
       })
+      const loaded = formatDefaultsLoadedStatus(data)
+      setDefaultsStatus(
+        loaded || (data.fromStaticSnapshot ? '' : 'MTG Goldfish data refreshed.')
+      )
     } catch (error) {
       setDefaultsStatus(error instanceof Error ? error.message : 'Could not refresh MTG Goldfish data.')
     } finally {
@@ -141,7 +169,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
   const updateCell = useCallback((rowId, colId, rawValue) => {
     setGrid((prev) => {
       if (!prev) return prev
-      if (colId === getLockedMetagameColumnId(prev)) return prev
+      if (getLockedMetagameColumnIds(prev).includes(colId)) return prev
       const trimmed = String(rawValue ?? '').trim()
       if (trimmed === '') {
         const cells = { ...prev.cells, [rowId]: { ...prev.cells[rowId], [colId]: '' } }
@@ -173,7 +201,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
   const updateColLabel = useCallback((colId, label) => {
     setGrid((prev) => {
       if (!prev) return prev
-      if (colId === getLockedMetagameColumnId(prev)) return prev
+      if (getLockedMetagameColumnIds(prev).includes(colId)) return prev
       const columns = prev.columns.map((c) => (c.id === colId ? { ...c, label } : c))
       return { ...prev, columns }
     })
@@ -195,7 +223,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
   const removeColumn = useCallback((colId) => {
     setGrid((prev) => {
       if (!prev || prev.columns.length <= 1) return prev
-      if (colId === getLockedMetagameColumnId(prev)) return prev
+      if (getLockedMetagameColumnIds(prev).includes(colId)) return prev
       const columns = prev.columns.filter((c) => c.id !== colId)
       const cells = {}
       for (const row of prev.rows) {
@@ -261,13 +289,21 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
               </th>
               {grid.columns.map((col) => (
                 <th key={col.id} className="metagame-grid-th-meta" scope="col">
-                  {col.id === getLockedMetagameColumnId(grid) ? (
+                  {lockedColumnIds.includes(col.id) ? (
                     <div className="metagame-grid-th-goldfish">
                       <div className="metagame-grid-goldfish-title">MTG Goldfish</div>
-                      <div className="metagame-grid-goldfish-sub">Last 30 days</div>
+                      <div className="metagame-grid-goldfish-sub">
+                        {col.label.includes('7') ? 'Last 7 days' : col.label.includes('14') ? 'Last 14 days' : 'Last 30 days'}
+                      </div>
                       <div className="metagame-grid-goldfish-updated">
-                        {grid.defaults?.fetchedAt
-                          ? `Updated ${new Date(grid.defaults.fetchedAt).toLocaleDateString()}`
+                        {(grid.defaults?.fetchedAtByWindow?.['7'] || grid.defaults?.fetchedAtByWindow?.['14'] || grid.defaults?.fetchedAtByWindow?.['30'] || grid.defaults?.fetchedAt)
+                          ? `Updated ${new Date(
+                            col.label.includes('7')
+                              ? (grid.defaults?.fetchedAtByWindow?.['7'] || grid.defaults?.fetchedAt)
+                              : col.label.includes('14')
+                                ? (grid.defaults?.fetchedAtByWindow?.['14'] || grid.defaults?.fetchedAt)
+                                : (grid.defaults?.fetchedAtByWindow?.['30'] || grid.defaults?.fetchedAt)
+                          ).toLocaleDateString()}`
                           : 'Not loaded yet — use Refresh MTG Goldfish'}
                       </div>
                       <span className="metagame-grid-locked-badge metagame-grid-locked-badge--inline">Read-only</span>
@@ -312,7 +348,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
                       : 'Add another metagame column'
                   }
                 >
-                  + Add metagame
+                  + Add Custom Metagame
                 </button>
               </th>
             </tr>
@@ -365,8 +401,8 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
                       })()}
                       onChange={(e) => updateCell(row.id, col.id, e.target.value)}
                       placeholder="0"
-                      readOnly={col.id === getLockedMetagameColumnId(grid)}
-                      aria-label={`${col.id === getLockedMetagameColumnId(grid) ? GOLDFISH_COLUMN_LABEL : col.label} % for ${row.name || `row ${idx + 1}`}`}
+                      readOnly={lockedColumnIds.includes(col.id)}
+                      aria-label={`${col.label} % for ${row.name || `row ${idx + 1}`}`}
                     />
                   </td>
                 ))}

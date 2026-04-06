@@ -44,7 +44,9 @@
 ### Troubleshooting MTG Goldfish on Vercel (or any host)
 
 - **Empty archetypes / `unavailable: true` in JSON:** MTG Goldfish may block or throttle requests from cloud datacenter IPs, or their HTML layout may have changed so the scraper in [`api/metagame-defaults.js`](../api/metagame-defaults.js) no longer finds tiles. Check the `error` field in the JSON response and Vercel **Functions** logs for the failing request.
-- **Timeouts:** The API fetches four format pages **in parallel** to stay within typical serverless limits. [`vercel.json`](../vercel.json) sets `maxDuration` for `api/metagame-defaults.js` to 30s where your plan allows (Hobby caps at 10s).
+- **Timeouts:** The API fetches four format pages **in parallel**. [`vercel.json`](../vercel.json) requests `maxDuration` 30s for `api/metagame-defaults.js`; **Vercel Hobby still caps at 10s**, so slow Goldfish responses can cause a function timeout (check **Functions → Logs**). Upgrade to Pro or rely on [`metagame-defaults.json`](../scripts/build-metagame-defaults.mjs) from `npm run build` if needed.
+- **Refresh looks like a no-op:** If a forced refresh (`?refresh=1`) failed but the API returned **cached** data from an earlier successful scrape, the grid would not change. Failed refreshes now return an explicit **`error`** instead of silently reusing stale cache.
+- **`?refresh=1` ignored:** The handler reads `refresh` from `req.query` and falls back to parsing **`req.url`** so bypass-cache works even when the query object is missing.
 - **“Refresh” used to show stale data:** Previously the server cached results for 24 hours and the UI refresh still hit that cache. **Refresh MTG Goldfish** now calls `?refresh=1` so each click triggers a new fetch when Goldfish allows it.
 
 ## 4. Custom domain (domain purchased from Wix)
@@ -65,9 +67,16 @@ Your domain registrar is Wix; **DNS** can stay at Wix or move elsewhere (e.g. Cl
 
 If Wix’s DNS is limiting: add the site to Cloudflare, copy the two nameservers into Wix’s domain settings, then create the **A/CNAME** records Cloudflare (and your host) require.
 
-## 5. GitHub Pages (not recommended for this app)
+## 5. GitHub Pages and other static-only hosts
 
-GitHub Pages serves **static files only**. There is **no** `/api/metagame-defaults` unless you add a separate backend or serverless elsewhere. Prefer Vercel, Netlify, or Cloudflare Pages as above.
+GitHub Pages cannot run serverless **`/api/metagame-defaults`**. This project still works there via a **build-time snapshot**:
+
+1. **`npm run build`** runs [`scripts/build-metagame-defaults.mjs`](../scripts/build-metagame-defaults.mjs) first (`prebuild`), which calls the same logic as [`api/metagame-defaults.js`](../api/metagame-defaults.js) and writes **`public/metagame-defaults.json`** (gitignored; copied into **`dist/`**).
+2. The client tries **`/api/metagame-defaults`** first; if it gets **404** or **HTML** (typical on static hosting), it loads **`/metagame-defaults.json`** instead.
+3. **CI must allow outbound HTTPS** during `npm run build` so the snapshot can scrape MTG Goldfish. If the fetch fails, an empty snapshot is written and the UI explains that.
+4. **“Refresh MTG Goldfish”** in the app requires a live API (Vercel / Netlify / Cloudflare). On static-only sites, use a new deploy after `npm run build` to refresh the snapshot.
+
+For always-live metagame data, prefer **Vercel, Netlify, or Cloudflare Pages** (section 2) over GitHub Pages alone.
 
 ## Checklist
 

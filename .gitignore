@@ -20,6 +20,9 @@ dist-ssr
 # Local secrets / notes (never commit)
 GIT*.docx
 
+# Generated at build time (see scripts/build-metagame-defaults.mjs)
+public/metagame-defaults.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

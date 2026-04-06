@@ -296,27 +296,47 @@ export function saveMatchupData(userId, decklistId, metagameId, payload) {
 
 // --- Per-format metagame grid (rows = deck names, columns = metagame scenarios) ---
 
-/** Fixed label for column 1 (synced metagame name); date shown only in the grid UI. */
-export const GOLDFISH_COLUMN_LABEL = 'MTG Goldfish (Last 30 days)'
+/** Locked Goldfish window keys (7 / 14 / 30). Column labels are format-specific — use {@link goldfishLockedColumnLabel}. */
+export const GOLDFISH_LOCKED_WINDOWS = [
+  { key: '7', label: 'MTG Goldfish (Last 7 days)' },
+  { key: '14', label: 'MTG Goldfish (Last 14 days)' },
+  { key: '30', label: 'MTG Goldfish (Last 30 days)' },
+]
+
+/** Pre–format-specific labels (used to detect old columns when migrating). */
+const LEGACY_STATIC_GOLDFISH_LABELS = GOLDFISH_LOCKED_WINDOWS.map((w) => w.label)
+
+/**
+ * Distinct, format-scoped labels for the three locked Goldfish columns (7 / 14 / 30 day windows).
+ */
+export function goldfishLockedColumnLabel(formatName, windowKey) {
+  const fmt = String(formatName ?? '').trim() || 'Format'
+  const w = String(windowKey)
+  const span = w === '7' ? '7-day' : w === '14' ? '14-day' : '30-day'
+  return `${fmt} · ${span} · Goldfish`
+}
+
+function goldfishLabelsToExcludeFromCustomColumns(formatName) {
+  const set = new Set(LEGACY_STATIC_GOLDFISH_LABELS)
+  for (const fmt of DEFAULT_FORMATS) {
+    for (const w of GOLDFISH_LOCKED_WINDOWS) {
+      set.add(goldfishLockedColumnLabel(fmt, w.key))
+    }
+  }
+  const extra = String(formatName ?? '').trim()
+  if (extra) {
+    for (const w of GOLDFISH_LOCKED_WINDOWS) {
+      set.add(goldfishLockedColumnLabel(extra, w.key))
+    }
+  }
+  return set
+}
 
 const METAGAME_GRID_MAX_COLUMNS = 5
 
 function trimMetagameColumns(columns) {
   if (columns.length <= METAGAME_GRID_MAX_COLUMNS) return columns
   return columns.slice(0, METAGAME_GRID_MAX_COLUMNS)
-}
-
-function cellsForColumnSet(grid, columns, priorCells) {
-  const cells = {}
-  for (const row of grid.rows) {
-    const prev = priorCells[row.id] || {}
-    const next = {}
-    for (const col of columns) {
-      next[col.id] = prev[col.id] ?? ''
-    }
-    cells[row.id] = next
-  }
-  return cells
 }
 
 function metagameGridKey(userId) {
@@ -350,88 +370,114 @@ function isValidMetagameGrid(grid) {
 }
 
 /**
- * Default grid: Goldfish column + two custom metagame columns and empty rows.
+ * Default grid: 3 locked Goldfish columns (7/14/30) + 2 custom metagames and empty rows.
+ * @param {string} [format='Standard'] — used for locked column labels and defaults.gridFormat.
  */
-export function createDefaultMetagameGrid() {
+export function createDefaultMetagameGrid(format = 'Standard') {
+  const fmt = String(format ?? '').trim() || 'Standard'
   const mkCol = (label) => ({ id: mgUid(), label })
-  const goldCol = { id: mgUid(), label: GOLDFISH_COLUMN_LABEL }
+  const lockedCols = GOLDFISH_LOCKED_WINDOWS.map((w) => ({
+    id: mgUid(),
+    label: goldfishLockedColumnLabel(fmt, w.key),
+  }))
   return {
-    columns: [goldCol, mkCol('Metagame 2'), mkCol('Metagame 3')],
+    columns: [...lockedCols, mkCol('Custom Metagame 1'), mkCol('Custom Metagame 2')],
     rows: Array.from({ length: 12 }, () => ({ id: mgUid(), name: '' })),
     cells: {},
     defaults: {
       source: 'MTG Goldfish',
-      snapshotLabel: 'Last 30 Days',
+      snapshotLabel: 'Last 7/14/30 Days',
       fetchedAt: '',
-      lockedColumnId: goldCol.id,
+      fetchedAtByWindow: {},
+      gridFormat: fmt,
+      lockedColumnIds: lockedCols.map((c) => c.id),
+      lockedColumnId: lockedCols[0].id,
       lockedRowIds: [],
     },
   }
 }
 
-function ensureGoldfishMetadata(grid) {
+function ensureGoldfishMetadata(grid, formatName) {
   if (!isValidMetagameGrid(grid)) return grid
+  const fmt =
+    String(formatName ?? grid?.defaults?.gridFormat ?? '').trim() || 'Standard'
   const d = grid.defaults && typeof grid.defaults === 'object' ? grid.defaults : {}
-  const lockedId = typeof d.lockedColumnId === 'string' && d.lockedColumnId ? d.lockedColumnId : ''
+  const oldLockedId = typeof d.lockedColumnId === 'string' && d.lockedColumnId ? d.lockedColumnId : ''
+  const oldLockedIds = Array.isArray(d.lockedColumnIds) ? d.lockedColumnIds.filter(Boolean) : []
+  // Migration rules:
+  // - Legacy schema had a single locked column (30-day).
+  // - New schema uses [7, 14, 30] and requires unique IDs.
+  const incomingLockedIds =
+    oldLockedIds.length >= 3
+      ? oldLockedIds.slice(0, 3)
+      : oldLockedIds.length === 2
+        ? [oldLockedIds[0], oldLockedIds[1], '']
+        : oldLockedIds.length === 1
+          ? ['', '', oldLockedIds[0]]
+          : oldLockedId
+            ? ['', '', oldLockedId]
+            : []
 
-  const buildDefaults = (firstColId, lockedRowIds) => ({
+  const buildDefaults = (lockedColumnIds, lockedRowIds) => ({
     source: typeof d.source === 'string' ? d.source : 'MTG Goldfish',
-    snapshotLabel: typeof d.snapshotLabel === 'string' ? d.snapshotLabel : 'Last 30 Days',
+    snapshotLabel: typeof d.snapshotLabel === 'string' ? d.snapshotLabel : 'Last 7/14/30 Days',
     fetchedAt: typeof d.fetchedAt === 'string' ? d.fetchedAt : '',
-    lockedColumnId: firstColId,
+    fetchedAtByWindow: d.fetchedAtByWindow && typeof d.fetchedAtByWindow === 'object' ? d.fetchedAtByWindow : {},
+    gridFormat: fmt,
+    lockedColumnIds: [...lockedColumnIds],
+    lockedColumnId: lockedColumnIds[0] || '',
     lockedRowIds: Array.isArray(lockedRowIds) ? [...lockedRowIds] : [],
   })
 
-  let columns = [...grid.columns]
-  let cells = grid.cells
-  let lockedRowIds = Array.isArray(d.lockedRowIds) ? [...d.lockedRowIds] : []
-  let changed = false
+  const oldColumns = [...grid.columns]
+  const lockLabelByKey = Object.fromEntries(
+    GOLDFISH_LOCKED_WINDOWS.map((w) => [w.key, goldfishLockedColumnLabel(fmt, w.key)])
+  )
+  const excludeGoldfishLabels = goldfishLabelsToExcludeFromCustomColumns(fmt)
+  const existingById = new Map(oldColumns.map((c) => [c.id, c]))
+  const oldLockedSet = new Set(incomingLockedIds)
+  const legacy30Col = oldLockedId ? existingById.get(oldLockedId) : null
 
-  const prependGoldfish = () => {
-    const goldCol = { id: mgUid(), label: GOLDFISH_COLUMN_LABEL }
-    columns = trimMetagameColumns([goldCol, ...columns])
-    lockedRowIds = []
-    cells = cellsForColumnSet(grid, columns, grid.cells)
-    changed = true
-  }
+  const usedLockedIds = new Set()
+  const lockedCols = GOLDFISH_LOCKED_WINDOWS.map((w, idx) => {
+    let id = incomingLockedIds[idx]
+    if (!id && w.key === '30' && legacy30Col?.id) id = legacy30Col.id
+    if (!id || !existingById.has(id) || usedLockedIds.has(id)) id = mgUid()
+    usedLockedIds.add(id)
+    return { id, label: lockLabelByKey[w.key] }
+  })
 
-  if (!lockedId) {
-    prependGoldfish()
-    const defaults = buildDefaults(columns[0].id, lockedRowIds)
-    return changed ? { ...grid, columns, cells, defaults } : grid
-  }
+  const customCols = oldColumns.filter((c) => !oldLockedSet.has(c.id) && !excludeGoldfishLabels.has(c.label))
+  const columns = trimMetagameColumns([...lockedCols, ...customCols])
+  const lockedRowIds = Array.isArray(d.lockedRowIds) ? [...d.lockedRowIds] : []
+  const cells = {}
+  const oldThirtyId = legacy30Col?.id || ''
 
-  const lockedIdx = columns.findIndex((c) => c.id === lockedId)
-  if (lockedIdx < 0) {
-    prependGoldfish()
-    const defaults = buildDefaults(columns[0].id, lockedRowIds)
-    return { ...grid, columns, cells, defaults }
-  }
-
-  if (lockedIdx !== 0) {
-    const lockedCol = columns[lockedIdx]
-    columns = trimMetagameColumns([lockedCol, ...columns.filter((_, i) => i !== lockedIdx)])
-    cells = cellsForColumnSet(grid, columns, grid.cells)
-    changed = true
-  } else {
-    const trimmed = trimMetagameColumns(columns)
-    if (trimmed.length !== columns.length || trimmed.some((c, i) => c.id !== columns[i].id)) {
-      columns = trimmed
-      cells = cellsForColumnSet(grid, columns, grid.cells)
-      changed = true
-    } else {
-      columns = trimmed
+  for (const row of grid.rows) {
+    const prev = grid.cells?.[row.id] || {}
+    const next = {}
+    for (const col of columns) {
+      if (prev[col.id] !== undefined) {
+        next[col.id] = prev[col.id]
+      } else if (
+        oldThirtyId
+        && prev[oldThirtyId] !== undefined
+        && (col.label === lockLabelByKey['30'] || col.label === LEGACY_STATIC_GOLDFISH_LABELS[2])
+      ) {
+        next[col.id] = prev[oldThirtyId]
+      } else {
+        next[col.id] = ''
+      }
     }
+    cells[row.id] = next
   }
 
-  if (columns[0].label !== GOLDFISH_COLUMN_LABEL) {
-    columns = columns.map((c, i) => (i === 0 ? { ...c, label: GOLDFISH_COLUMN_LABEL } : c))
-    changed = true
-  }
-
-  const defaults = buildDefaults(columns[0].id, lockedRowIds)
-  const defaultsChanged = JSON.stringify(defaults) !== JSON.stringify(grid.defaults || {})
-  if (defaultsChanged) changed = true
+  const lockedColumnIds = lockedCols.map((c) => c.id).filter((id) => columns.some((c) => c.id === id))
+  const defaults = buildDefaults(lockedColumnIds, lockedRowIds)
+  const changed =
+    JSON.stringify(columns) !== JSON.stringify(grid.columns) ||
+    JSON.stringify(cells) !== JSON.stringify(grid.cells) ||
+    JSON.stringify(defaults) !== JSON.stringify(grid.defaults || {})
 
   if (!changed) return grid
   return { ...grid, columns, cells, defaults }
@@ -440,13 +486,16 @@ function ensureGoldfishMetadata(grid) {
 function migrateLegacyMetagamesToGrid(userId, format) {
   const metas = getMetagames(userId).filter((m) => (m.format || '') === format)
   if (metas.length === 0) {
-    return createDefaultMetagameGrid()
+    return createDefaultMetagameGrid(format)
   }
 
-  const maxUserCols = METAGAME_GRID_MAX_COLUMNS - 1
+  const maxUserCols = METAGAME_GRID_MAX_COLUMNS - GOLDFISH_LOCKED_WINDOWS.length
   const metasOrdered = metas.slice(0, maxUserCols)
-  const goldCol = { id: mgUid(), label: GOLDFISH_COLUMN_LABEL }
-  const columns = [goldCol, ...metasOrdered.map((m) => ({ id: m.id, label: m.name }))]
+  const lockedCols = GOLDFISH_LOCKED_WINDOWS.map((w) => ({
+    id: mgUid(),
+    label: goldfishLockedColumnLabel(format, w.key),
+  }))
+  const columns = [...lockedCols, ...metasOrdered.map((m) => ({ id: m.id, label: m.name }))]
 
   const nameSet = new Set()
   metasOrdered.forEach((m) => {
@@ -464,7 +513,7 @@ function migrateLegacyMetagamesToGrid(userId, format) {
   }
   const cells = {}
   rows.forEach((r) => {
-    cells[r.id] = { [goldCol.id]: '' }
+    cells[r.id] = Object.fromEntries(lockedCols.map((c) => [c.id, '']))
   })
   metasOrdered.forEach((m) => {
     const archByName = Object.fromEntries(
@@ -482,9 +531,12 @@ function migrateLegacyMetagamesToGrid(userId, format) {
     cells,
     defaults: {
       source: 'MTG Goldfish',
-      snapshotLabel: 'Last 30 Days',
+      snapshotLabel: 'Last 7/14/30 Days',
       fetchedAt: '',
-      lockedColumnId: goldCol.id,
+      fetchedAtByWindow: {},
+      gridFormat: String(format ?? '').trim() || 'Standard',
+      lockedColumnIds: lockedCols.map((c) => c.id),
+      lockedColumnId: lockedCols[0].id,
       lockedRowIds: [],
     },
   }
@@ -615,7 +667,7 @@ export function ensureMetagameGrid(userId, format) {
     obj[format] = grid
     setStored(metagameGridKey(userId), obj)
   }
-  const normalized = ensureGoldfishMetadata(grid)
+  const normalized = ensureGoldfishMetadata(grid, format)
   if (normalized !== grid) {
     obj[format] = normalized
     setStored(metagameGridKey(userId), obj)
@@ -691,7 +743,14 @@ export function applyDefaultsToFirstMetagameColumn(grid, archetypes, firstColumn
 }
 
 export function getLockedMetagameColumnId(grid) {
-  return String(grid?.defaults?.lockedColumnId || '')
+  return getLockedMetagameColumnIds(grid)[0] || ''
+}
+
+export function getLockedMetagameColumnIds(grid) {
+  const ids = Array.isArray(grid?.defaults?.lockedColumnIds) ? grid.defaults.lockedColumnIds : []
+  if (ids.length > 0) return ids.map(String)
+  const fallback = String(grid?.defaults?.lockedColumnId || '')
+  return fallback ? [fallback] : []
 }
 
 export function isLockedMetagameRow(grid, rowId) {
@@ -705,26 +764,51 @@ export function isLockedMetagameRow(grid, rowId) {
  * - First column label and values are managed by feed data.
  * - Rows sourced from feed are locked and sorted by descending baseline percentage.
  */
-export function applyLockedGoldfishDefaults(grid, payload) {
+export function applyLockedGoldfishDefaults(grid, payload, formatName) {
   if (!isValidMetagameGrid(grid)) return grid
-  const firstCol = grid.columns?.[0]
-  if (!firstCol?.id) return grid
+  const fmt = String(formatName ?? grid?.defaults?.gridFormat ?? '').trim() || 'Standard'
+  const lockedIds = getLockedMetagameColumnIds(grid)
+  if (lockedIds.length === 0) return grid
+  const lockedIdsByWindow = {
+    '7': lockedIds[0] || '',
+    '14': lockedIds[1] || '',
+    '30': lockedIds[2] || lockedIds[0] || '',
+  }
+  const allLockedIds = lockedIds.filter(Boolean)
 
   const source = String(payload?.source || 'MTG Goldfish')
-  const snapshotLabel = String(payload?.snapshotLabel || 'Last 30 Days')
-  const fetchedAt = String(payload?.fetchedAt || '')
+  const snapshotLabel = String(payload?.snapshotLabel || 'Last 7/14/30 Days')
+  const fetchedAtByWindow = {}
 
-  const normalized = Array.isArray(payload?.archetypes)
-    ? payload.archetypes
-      .map((item) => ({
-        name: String(item?.name ?? '').trim(),
-        metagamePercent: clampMetagamePercent(item?.metagamePercent),
-      }))
-      .filter((item) => item.name)
-      .sort((a, b) => b.metagamePercent - a.metagamePercent)
-    : []
+  const normalizeList = (list) =>
+    Array.isArray(list)
+      ? list
+        .map((item) => ({
+          name: String(item?.name ?? '').trim(),
+          metagamePercent: clampMetagamePercent(item?.metagamePercent),
+        }))
+        .filter((item) => item.name)
+        .sort((a, b) => b.metagamePercent - a.metagamePercent)
+      : []
 
-  if (normalized.length === 0) return grid
+  const byWindow = {
+    '7': normalizeList(payload?.snapshots?.['7']?.archetypes),
+    '14': normalizeList(payload?.snapshots?.['14']?.archetypes),
+    '30': normalizeList(payload?.snapshots?.['30']?.archetypes || payload?.archetypes),
+  }
+  fetchedAtByWindow['7'] = String(payload?.snapshots?.['7']?.fetchedAt || payload?.fetchedAt || '')
+  fetchedAtByWindow['14'] = String(payload?.snapshots?.['14']?.fetchedAt || payload?.fetchedAt || '')
+  fetchedAtByWindow['30'] = String(payload?.snapshots?.['30']?.fetchedAt || payload?.fetchedAt || '')
+
+  const unionByName = new Map()
+  for (const windowKey of ['7', '14', '30']) {
+    for (const arch of byWindow[windowKey]) {
+      if (!unionByName.has(normalizeRowKey(arch.name))) {
+        unionByName.set(normalizeRowKey(arch.name), arch.name)
+      }
+    }
+  }
+  if (unionByName.size === 0) return grid
 
   const rowsById = new Map(grid.rows.map((row) => [row.id, { ...row }]))
   const rowByName = new Map(grid.rows.map((row) => [normalizeRowKey(row.name), row.id]))
@@ -734,26 +818,31 @@ export function applyLockedGoldfishDefaults(grid, payload) {
   })
 
   const lockedRowIds = []
-  for (const arch of normalized) {
-    const key = normalizeRowKey(arch.name)
+  for (const [key, displayName] of unionByName.entries()) {
     let rowId = rowByName.get(key)
     if (!rowId) {
       rowId = mgUid()
-      rowsById.set(rowId, { id: rowId, name: arch.name })
+      rowsById.set(rowId, { id: rowId, name: displayName })
       rowByName.set(key, rowId)
       cells[rowId] = {}
       for (const col of grid.columns) cells[rowId][col.id] = ''
     } else {
-      rowsById.set(rowId, { ...rowsById.get(rowId), name: arch.name })
+      rowsById.set(rowId, { ...rowsById.get(rowId), name: displayName })
     }
-    cells[rowId][firstCol.id] = String(arch.metagamePercent)
+    for (const windowKey of ['7', '14', '30']) {
+      const colId = lockedIdsByWindow[windowKey]
+      if (!colId) continue
+      const pct = byWindow[windowKey].find((item) => normalizeRowKey(item.name) === key)?.metagamePercent
+      cells[rowId][colId] = pct == null ? '' : String(pct)
+    }
     lockedRowIds.push(rowId)
   }
 
   const lockedUnique = [...new Set(lockedRowIds)]
   lockedUnique.sort((a, b) => {
-    const va = parsePctCell(cells[a]?.[firstCol.id])
-    const vb = parsePctCell(cells[b]?.[firstCol.id])
+    const sortColId = lockedIdsByWindow['30'] || lockedIdsByWindow['14'] || lockedIdsByWindow['7'] || lockedIds[0]
+    const va = parsePctCell(cells[a]?.[sortColId])
+    const vb = parsePctCell(cells[b]?.[sortColId])
     if (vb !== va) return vb - va
     const na = String(rowsById.get(a)?.name ?? '')
     const nb = String(rowsById.get(b)?.name ?? '')
@@ -766,7 +855,15 @@ export function applyLockedGoldfishDefaults(grid, payload) {
     ...grid.rows.filter((row) => !lockedSet.has(row.id)).map((row) => rowsById.get(row.id)),
   ].filter(Boolean)
 
-  const columns = grid.columns.map((col, idx) => (idx === 0 ? { ...col, label: GOLDFISH_COLUMN_LABEL } : col))
+  const lockLabelByKey = Object.fromEntries(
+    GOLDFISH_LOCKED_WINDOWS.map((w) => [w.key, goldfishLockedColumnLabel(fmt, w.key)])
+  )
+  const columns = grid.columns.map((col) => {
+    if (col.id === lockedIdsByWindow['7']) return { ...col, label: lockLabelByKey['7'] }
+    if (col.id === lockedIdsByWindow['14']) return { ...col, label: lockLabelByKey['14'] }
+    if (col.id === lockedIdsByWindow['30']) return { ...col, label: lockLabelByKey['30'] }
+    return col
+  })
 
   return {
     ...grid,
@@ -776,8 +873,11 @@ export function applyLockedGoldfishDefaults(grid, payload) {
     defaults: {
       source,
       snapshotLabel,
-      fetchedAt,
-      lockedColumnId: firstCol.id,
+      fetchedAt: fetchedAtByWindow['30'] || payload?.fetchedAt || '',
+      fetchedAtByWindow,
+      gridFormat: fmt,
+      lockedColumnIds: [...allLockedIds],
+      lockedColumnId: lockedIds[0] || '',
       lockedRowIds: lockedUnique,
     },
   }

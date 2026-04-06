@@ -34,6 +34,8 @@ Step-by-step host setup, DNS records for domains bought through Wix, and the `/a
 
 All three wire **`GET /api/metagame-defaults`** in production (MTG Goldfish metagame defaults), matching the Vite dev server.
 
+**GitHub Pages / static-only:** `npm run build` generates **`metagame-defaults.json`** in `dist/`; the client falls back to it when `/api/metagame-defaults` is missing. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §5.
+
 ## ESLint
 
 ```bash

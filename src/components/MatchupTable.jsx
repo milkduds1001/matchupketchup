@@ -107,6 +107,14 @@ function MatchupTable({
   hideLands = false,
   onChangeCell,
 }) {
+  function shouldRenderArchetype(arch) {
+    const raw = arch?.metagamePercent
+    if (raw === '' || raw == null) return true
+    const n = Number.parseFloat(String(raw).replace('%', '').trim())
+    if (Number.isNaN(n)) return true
+    return n > 0
+  }
+
   const mainDeckCards = sortCardsByGroupThenTypeThenQtyThenName(
     cards.filter((card) => card.zone !== 'sideboard'),
     cardTypes
@@ -118,7 +126,12 @@ function MatchupTable({
   const mainDeckTotal = mainDeckCards.reduce((sum, c) => sum + (Number(c.quantity) || 0), 0)
   const sideboardTotal = sideboardCards.reduce((sum, c) => sum + (Number(c.quantity) || 0), 0)
   const safeArchetypes = (Array.isArray(archetypes) ? archetypes : []).filter(
-    (a) => a != null && typeof a === 'object' && typeof a.name === 'string' && a.name.trim()
+    (a) =>
+      a != null &&
+      typeof a === 'object' &&
+      typeof a.name === 'string' &&
+      a.name.trim() &&
+      shouldRenderArchetype(a)
   )
   const theadRowCount = 2
   const columnSlots = getColumnSlots(safeArchetypes)

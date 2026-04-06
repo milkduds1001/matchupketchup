@@ -37,7 +37,7 @@ export default function HomePage({ user, onNavigateLogin, onNavigateApp, onLogoC
             <img src={logo} alt="MatchupKetchup" className="home-hero-logo" />
           </h1>
           <p className="home-hero-lead">
-            Build your sideboard plan for Magic: The Gathering—decklists, metagame matchups, and a printable guide in one place.
+            Create, save, and print your sideboard plans
           </p>
           {!user && (
             <div className="home-hero-actions">
@@ -53,26 +53,6 @@ export default function HomePage({ user, onNavigateLogin, onNavigateApp, onLogoC
               </button>
             </div>
           )}
-        </section>
-
-        <section className="home-features" aria-labelledby="home-features-heading">
-          <h2 id="home-features-heading" className="home-features-title">
-            How it works
-          </h2>
-          <ol className="home-steps">
-            <li>
-              <strong>Select a format</strong> and your decklist.
-            </li>
-            <li>
-              <strong>Choose a metagame</strong> with the archetypes you expect to face.
-            </li>
-            <li>
-              <strong>Fill in your sideboard plan</strong>—what comes in and out in each matchup.
-            </li>
-            <li>
-              <strong>Print or save as PDF</strong> your sideboard guide and deck registration sheet.
-            </li>
-          </ol>
         </section>
       </main>
     </div>
