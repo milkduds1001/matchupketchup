@@ -39,8 +39,8 @@
 
 /* Wide asset includes wordmark on the right; crop to the mascot so no baked-in title/subtitle shows. */
 .login-logo-wrap {
-  width: min(100%, 200px);
-  height: clamp(108px, 30vw, 148px);
+  width: min(100%, 300px);
+  height: clamp(162px, 45vw, 222px);
   margin: 0 auto 1rem;
   overflow: hidden;
   border-radius: var(--radius-md);
