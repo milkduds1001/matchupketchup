@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext.jsx'
-import logo from '../assets/matchupketchup_logo.svg'
+import logo from '../assets/matchupketchup_logo_mark.png'
 import './Login.css'
 
 export default function Login({ onBack, onSuccess } = {}) {

@@ -37,7 +37,7 @@ export default function HomePage({ user, onNavigateLogin, onNavigateApp, onLogoC
             <img src={logo} alt="MatchupKetchup" className="home-hero-logo" />
           </h1>
           <p className="home-hero-lead">
-            Create, save, and print your sideboard plans
+            Create, save, and print your sideboard plans.
           </p>
           {!user && (
             <div className="home-hero-actions">

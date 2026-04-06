@@ -39,13 +39,12 @@
 
 .login-logo {
   width: 100%;
-  max-width: 560px;
+  max-width: 340px;
   height: auto;
   display: block;
   margin: 0 auto 1rem;
   object-fit: contain;
-  background: var(--color-surface);
-  mix-blend-mode: multiply;
+  background: transparent;
 }
 
 .login-title {
