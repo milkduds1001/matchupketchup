@@ -37,7 +37,10 @@ function formatsMatch(a, b) {
 }
 
 function alphaCompare(a, b) {
-  return String(a ?? '').localeCompare(String(b ?? ''))
+  return new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare(
+    String(a ?? '').trim(),
+    String(b ?? '').trim()
+  )
 }
 
 const BASIC_LAND_FALLBACK = new Set([
