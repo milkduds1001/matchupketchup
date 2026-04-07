@@ -1539,6 +1539,11 @@
   color: var(--color-text);
 }
 
+/* Keep top step headings dark blue (override generic section h2 color). */
+.section.section-step .step-title {
+  color: var(--diner-blue);
+}
+
 .placeholder {
   margin: 0;
   color: var(--charcoal);
@@ -1610,6 +1615,20 @@
 
 .toggle-hide-lands-label {
   white-space: nowrap;
+}
+
+.matchup-display-count-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: var(--font-body);
+  color: var(--color-text);
+}
+
+.matchup-display-count-label .crud-select {
+  min-width: 110px;
 }
 
 .btn-reset {

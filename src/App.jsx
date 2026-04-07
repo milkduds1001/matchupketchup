@@ -199,6 +199,7 @@ function Dashboard({ onGoHome }) {
   const [matchupValues, setMatchupValues] = useState({})
   const [keysToMatchup, setKeysToMatchup] = useState({})
   const [hideLands, setHideLands] = useState(false)
+  const [matchupDisplayCount, setMatchupDisplayCount] = useState('10') // '5' | '10' | 'all'
   const [newFormatName, setNewFormatName] = useState('')
   const [deckName, setDeckName] = useState('')
   const [deckFormat, setDeckFormat] = useState(DEFAULT_FORMATS[0])
@@ -366,6 +367,20 @@ function Dashboard({ onGoHome }) {
       return String(a.name).localeCompare(String(b.name))
     })
   }, [selectedMetagame])
+  const displayedArchetypes = useMemo(() => {
+    if (!Array.isArray(archetypes) || archetypes.length === 0) return []
+    if (matchupDisplayCount === 'all') return archetypes
+    const n = Number.parseInt(matchupDisplayCount, 10)
+    if (Number.isNaN(n) || n <= 0) return archetypes
+    return archetypes.slice(0, n)
+  }, [archetypes, matchupDisplayCount])
+  const sideboardGuideArchetypes = useMemo(() => {
+    const minPct = (arch) => {
+      const n = Number.parseFloat(String(arch?.metagamePercent ?? '').replace('%', '').trim())
+      return !Number.isNaN(n) && n >= 1
+    }
+    return displayedArchetypes.filter(minPct)
+  }, [displayedArchetypes])
   const safeCards = useMemo(() => normalizeDeckCards(cards), [cards])
   const pairSelected = selectedDecklistId && selectedMetagameId
   const isStep1Complete = Boolean(selectedFormat)
@@ -1759,6 +1774,18 @@ function Dashboard({ onGoHome }) {
                   <input type="checkbox" checked={hideLands} onChange={(e) => setHideLands(e.target.checked)} />
                   <span className="toggle-hide-lands-label">Hide lands in table &amp; matchup print</span>
                 </label>
+                <label className="matchup-display-count-label">
+                  Show decks
+                  <select
+                    className="crud-select narrow"
+                    value={matchupDisplayCount}
+                    onChange={(e) => setMatchupDisplayCount(e.target.value)}
+                  >
+                    <option value="5">Top 5</option>
+                    <option value="10">Top 10</option>
+                    <option value="all">All</option>
+                  </select>
+                </label>
                 <button
                   type="button"
                   className="btn-reset"
@@ -1791,7 +1818,7 @@ function Dashboard({ onGoHome }) {
               </div>
               <MatchupTable
                 cards={safeCards}
-                archetypes={archetypes}
+                archetypes={displayedArchetypes}
                 values={matchupValues}
                 cardTypes={cardTypes}
                 hideLands={hideLands}
@@ -1825,10 +1852,11 @@ function Dashboard({ onGoHome }) {
                 </button>
               </div>
               <SideboardGuide
-                archetypes={archetypes}
+                archetypes={sideboardGuideArchetypes}
                 matchupValues={matchupValues}
                 keysToMatchup={keysToMatchup}
                 onKeysChange={handleKeysToMatchupChange}
+                emptyMessage="No archetypes at or above 1% metagame in the current view."
               />
             </section>
           </>

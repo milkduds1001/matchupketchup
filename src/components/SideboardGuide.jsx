@@ -62,13 +62,14 @@ function SideboardGuide({
   matchupValues = {},
   keysToMatchup = {},
   onKeysChange,
+  emptyMessage = 'Add archetypes in Metagame Input to see sideboard guides.',
 }) {
   const list = Array.isArray(archetypes) ? archetypes : []
 
   return (
     <div className="sideboard-guide">
       {list.length === 0 ? (
-        <p className="sideboard-guide-empty">Add archetypes in Metagame Input to see sideboard guides.</p>
+        <p className="sideboard-guide-empty">{emptyMessage}</p>
       ) : (
         <div className="sideboard-guide-list">
           {list.map((arch) => {
