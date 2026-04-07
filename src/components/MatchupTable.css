@@ -143,7 +143,7 @@
   text-transform: none;
   letter-spacing: 0.03em;
   padding: 0.15rem 0.1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--color-secondary);
 }
 
 .matchup-table td {
@@ -258,11 +258,44 @@
   box-shadow: 0 2px 8px rgba(184, 134, 11, 0.25);
 }
 
+.matchup-table .matchup-section-total-cell,
+.matchup-table .matchup-group-total-cell {
+  padding: 0.28rem 0.35rem;
+  font-weight: 700;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.matchup-table .matchup-section-total-cell {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-top: 1px solid var(--color-secondary);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+}
+
+.matchup-table .matchup-section-fill-cell {
+  background: var(--color-primary);
+  border-top: 1px solid var(--color-secondary);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+}
+
 .matchup-table .matchup-section-main .matchup-section-label-cell {
   border-top: none;
 }
 
+.matchup-table .matchup-section-main .matchup-section-total-cell,
+.matchup-table .matchup-section-main .matchup-section-fill-cell {
+  border-top: none;
+}
+
 .matchup-table .matchup-section-sideboard .matchup-section-label-cell {
+  background: var(--color-info);
+  border-top: 2px solid var(--color-secondary);
+}
+
+.matchup-table .matchup-section-sideboard .matchup-section-total-cell,
+.matchup-table .matchup-section-sideboard .matchup-section-fill-cell {
   background: var(--color-info);
   border-top: 2px solid var(--color-secondary);
 }
@@ -283,6 +316,28 @@
   color: var(--color-text);
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
+.matchup-table .matchup-group-label .matchup-group-total-cell {
+  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
+  color: var(--color-text);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
+.matchup-table .matchup-group-label .matchup-group-fill-cell {
+  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
+/* Extend alternating archetype shading into table body cells (not just header). */
+.matchup-table tbody td.matchup-col-stripe--a {
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-secondary-soft));
+}
+
+.matchup-table tbody td.matchup-col-stripe--b {
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-secondary-soft));
 }
 
 /* Totals rows in tfoot - black text on light background for readability */

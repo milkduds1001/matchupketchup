@@ -182,8 +182,8 @@ function MatchupTable({
 
   const archCount = safeArchetypes.length
   const archColumnCount = columnSlots.length
-  // Section labels / colspan must match real column count (card + qty + arch slots).
-  const labelColSpan = (SHOW_TYPE_GROUP_COLUMNS ? 4 : 2) + archColumnCount
+  const sectionLabelColSpan = SHOW_TYPE_GROUP_COLUMNS ? 3 : 1
+  const sectionTailColSpan = archColumnCount + (SHOW_TYPE_GROUP_COLUMNS ? 2 : 0)
   // CSS min-width: avoid zero-width table when counts are tiny (defensive).
   const displayCols = (SHOW_TYPE_GROUP_COLUMNS ? 4 : 2) + Math.max(1, archColumnCount)
   const totalsLabelColSpan = SHOW_TYPE_GROUP_COLUMNS ? 4 : 2
@@ -240,6 +240,7 @@ function MatchupTable({
       const archIndex = safeArchetypes.findIndex((a) => a.name === arch.name)
       const dividerAfter =
         role === 'draw' && archIndex >= 0 ? archDividerAfterClass(archIndex, archCount) : ''
+      const stripeClass = archIndex % 2 === 0 ? 'matchup-col-stripe--a' : 'matchup-col-stripe--b'
       const primaryKey = cellKeyForCard(card, arch.name, role)
       const value = cellDisplayValue(values, card, slot)
       const num = value === '' ? NaN : Number.parseInt(String(value).trim(), 10)
@@ -253,7 +254,7 @@ function MatchupTable({
       const changeKey = primaryKey
       const aria = `${card.name} vs ${arch.name} (${role === 'play' ? 'on the play' : 'on the draw'})`
       return (
-        <td key={`${arch.name}-${role}`} className={dividerAfter || undefined}>
+        <td key={`${arch.name}-${role}`} className={`${stripeClass}${dividerAfter ? ` ${dividerAfter}` : ''}`}>
           <input
             className={`matchup-input ${valueClass}`}
             type="text"
@@ -303,12 +304,8 @@ function MatchupTable({
         </colgroup>
         <thead>
           <tr>
-            <th rowSpan={theadRowCount} className="th-card">
-              Card
-            </th>
-            <th rowSpan={theadRowCount} className="th-qty">
-              Qty
-            </th>
+            <th rowSpan={theadRowCount} className="th-card" aria-label="Card column" />
+            <th rowSpan={theadRowCount} className="th-qty" aria-label="Quantity column" />
             {SHOW_TYPE_GROUP_COLUMNS && (
               <>
                 <th rowSpan={theadRowCount} className="th-type">Type</th>
@@ -321,9 +318,9 @@ function MatchupTable({
         </thead>
         <tbody>
           <tr className="matchup-section-label matchup-section-main">
-            <td className="matchup-section-label-cell" colSpan={labelColSpan}>
-              MAIN DECK {mainDeckTotal > 0 ? `(${mainDeckTotal})` : ''}
-            </td>
+            <td className="matchup-section-label-cell" colSpan={sectionLabelColSpan}>MAIN DECK</td>
+            <td className="matchup-section-total-cell">{mainDeckTotal > 0 ? mainDeckTotal : ''}</td>
+            <td className="matchup-section-fill-cell" colSpan={sectionTailColSpan} />
           </tr>
           {GROUP_SORT_ORDER.map((groupLabel) => {
             const cardsInGroup = mainDeckCards.filter(
@@ -335,9 +332,9 @@ function MatchupTable({
             return (
               <React.Fragment key={`group-${groupLabel}`}>
                 <tr className="matchup-group-label">
-                  <td className="matchup-group-label-cell" colSpan={labelColSpan}>
-                    {groupLabel} {groupTotal > 0 ? `(${groupTotal})` : ''}
-                  </td>
+                  <td className="matchup-group-label-cell" colSpan={sectionLabelColSpan}>{groupLabel}</td>
+                  <td className="matchup-group-total-cell">{groupTotal > 0 ? groupTotal : ''}</td>
+                  <td className="matchup-group-fill-cell" colSpan={sectionTailColSpan} />
                 </tr>
                 {!hideRowsForGroup &&
                   cardsInGroup.map((card) => (
@@ -359,9 +356,9 @@ function MatchupTable({
 
           {sideboardCards.length > 0 && (
             <tr className="matchup-section-label matchup-section-sideboard">
-              <td className="matchup-section-label-cell" colSpan={labelColSpan}>
-                SIDEBOARD {sideboardTotal > 0 ? `(${sideboardTotal})` : ''}
-              </td>
+              <td className="matchup-section-label-cell" colSpan={sectionLabelColSpan}>SIDEBOARD</td>
+              <td className="matchup-section-total-cell">{sideboardTotal > 0 ? sideboardTotal : ''}</td>
+              <td className="matchup-section-fill-cell" colSpan={sectionTailColSpan} />
             </tr>
           )}
 
