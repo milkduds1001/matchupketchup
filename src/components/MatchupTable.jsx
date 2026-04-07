@@ -95,6 +95,20 @@ function cellDisplayValue(values, card, slot) {
   return values[cellKeyForCard(card, arch.name, role)] ?? ''
 }
 
+function normalizeCellValueByZone(raw, card) {
+  const text = String(raw ?? '').trim()
+  if (text === '') return ''
+  if (text === '-') return '-'
+  const parsed = Number.parseInt(text, 10)
+  if (Number.isNaN(parsed)) return null
+  const maxQty = Number(card?.quantity) || 0
+  const abs = Math.abs(parsed)
+  if (maxQty > 0 && abs > maxQty) return null
+  if (abs === 0) return '0'
+  const signed = card?.zone === 'sideboard' ? abs : -abs
+  return String(signed)
+}
+
 /**
  * MatchupTable - Renders a table of cards with quantities and editable per-archetype cells.
  * Each archetype has two columns: on the play and on the draw.
@@ -246,14 +260,9 @@ function MatchupTable({
             inputMode="numeric"
             value={value}
             onChange={(e) => {
-              const raw = e.target.value
-              if (raw !== '') {
-                const parsed = Number.parseInt(String(raw).trim(), 10)
-                if (!Number.isNaN(parsed) && Math.abs(parsed) > (Number(card.quantity) || 0)) {
-                  return
-                }
-              }
-              onChangeCell?.(changeKey, arch.name, raw)
+              const next = normalizeCellValueByZone(e.target.value, card)
+              if (next == null) return
+              onChangeCell?.(changeKey, arch.name, next)
             }}
             aria-label={aria}
           />
