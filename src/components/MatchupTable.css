@@ -6,6 +6,7 @@
   /* Fallbacks until JS measures thead (ResizeObserver) */
   --matchup-thead-row1-height: 4.5rem;
   --matchup-thead-sticky-bottom: 6rem;
+  --matchup-section-main-height: 2.75rem;
   width: 100%;
   max-width: 100%;
   overflow: auto;
@@ -269,7 +270,8 @@
 
 .matchup-table-scroll .matchup-table tbody tr.matchup-group-label td.matchup-sticky-col--1,
 .matchup-table-scroll .matchup-table tbody tr.matchup-group-label td.matchup-sticky-col--2 {
-  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .matchup-table-scroll .matchup-table tbody tr:not(.matchup-group-label):not(.matchup-section-label):not(.sideboard-row) td.matchup-sticky-col--1 {
@@ -460,9 +462,9 @@
 
 .matchup-table .matchup-group-fill-arch {
   padding: 0;
-  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: var(--color-primary);
+  border-top: 1px solid var(--color-secondary);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.15);
 }
 
 .matchup-table .matchup-section-main .matchup-section-label-cell {
@@ -491,31 +493,52 @@
   background: color-mix(in srgb, var(--color-secondary-soft) 55%, var(--color-surface));
 }
 
-/* Within the main deck, visual breaks for each group (Lands, Creatures & Planeswalkers, Other Spells) */
+/* Group headers (Creatures & Planeswalkers, etc.): same red band as MAIN DECK + sticky below it */
+.matchup-table-scroll .matchup-table tbody tr.matchup-group-label > td {
+  position: sticky;
+  top: calc(var(--matchup-thead-sticky-bottom) + var(--matchup-section-main-height, 2.75rem));
+  z-index: 7;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.matchup-table-scroll .matchup-table tbody tr.matchup-group-label > td.matchup-sticky-col--1,
+.matchup-table-scroll .matchup-table tbody tr.matchup-group-label > td.matchup-sticky-col--2 {
+  z-index: 13;
+}
+
 .matchup-table .matchup-group-label .matchup-group-label-cell {
-  padding: 0.28rem 0.5rem;
-  font-size: 0.84rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.88rem;
   font-weight: 700;
   font-family: var(--font-display, 'Bebas Neue', sans-serif);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
-  color: var(--color-text);
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-top: 1px solid var(--color-secondary);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(184, 134, 11, 0.2);
 }
 
 .matchup-table .matchup-group-label .matchup-group-total-cell {
-  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
-  color: var(--color-text);
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-top: 1px solid var(--color-secondary);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.15);
 }
 
 .matchup-table .matchup-group-label .matchup-group-fill-cell {
-  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: var(--color-primary);
+  border-top: 1px solid var(--color-secondary);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Seamless red from MAIN DECK into first group row */
+.matchup-table .matchup-section-main + .matchup-group-label .matchup-group-label-cell,
+.matchup-table .matchup-section-main + .matchup-group-label .matchup-group-total-cell,
+.matchup-table .matchup-section-main + .matchup-group-label .matchup-group-fill-cell,
+.matchup-table .matchup-section-main + .matchup-group-label .matchup-group-fill-arch {
+  border-top: none;
 }
 
 .matchup-table td.matchup-arch-cell,
@@ -588,7 +611,8 @@
     box-shadow: none !important;
   }
 
-  .matchup-table-scroll .matchup-table tr.matchup-section-label > td {
+  .matchup-table-scroll .matchup-table tr.matchup-section-label > td,
+  .matchup-table-scroll .matchup-table tbody tr.matchup-group-label > td {
     position: static !important;
     top: auto !important;
   }

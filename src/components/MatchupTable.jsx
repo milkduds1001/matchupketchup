@@ -193,8 +193,9 @@ function MatchupTable({
 
   const scrollRef = useRef(null)
   const theadRef = useRef(null)
+  const sectionMainRowRef = useRef(null)
 
-  const syncTheadStickyVars = useCallback(() => {
+  const syncStickyLayoutVars = useCallback(() => {
     const wrap = scrollRef.current
     const thead = theadRef.current
     if (!wrap || !thead) return
@@ -210,23 +211,30 @@ function MatchupTable({
     if (theadRect.height > 0) {
       wrap.style.setProperty('--matchup-thead-sticky-bottom', `${theadRect.height}px`)
     }
+    const mainRow = sectionMainRowRef.current
+    if (mainRow) {
+      const mh = mainRow.getBoundingClientRect().height
+      if (mh > 0) wrap.style.setProperty('--matchup-section-main-height', `${mh}px`)
+    }
   }, [])
 
   useLayoutEffect(() => {
-    syncTheadStickyVars()
+    syncStickyLayoutVars()
     const thead = theadRef.current
+    const mainRow = sectionMainRowRef.current
     const wrap = scrollRef.current
     if (!thead || !wrap) return undefined
     const ro = new ResizeObserver(() => {
-      requestAnimationFrame(syncTheadStickyVars)
+      requestAnimationFrame(syncStickyLayoutVars)
     })
     ro.observe(thead)
-    window.addEventListener('resize', syncTheadStickyVars)
+    if (mainRow) ro.observe(mainRow)
+    window.addEventListener('resize', syncStickyLayoutVars)
     return () => {
       ro.disconnect()
-      window.removeEventListener('resize', syncTheadStickyVars)
+      window.removeEventListener('resize', syncStickyLayoutVars)
     }
-  }, [syncTheadStickyVars, safeArchetypes, archColumnCount])
+  }, [syncStickyLayoutVars, safeArchetypes, archColumnCount])
 
   /** One <td> per archetype play/draw column so gold dividers align with card rows (when type columns off). */
   function renderArchSpanFillCells(variant) {
@@ -386,7 +394,7 @@ function MatchupTable({
           {renderPlayDrawSubrow()}
         </thead>
         <tbody>
-          <tr className="matchup-section-label matchup-section-main">
+          <tr ref={sectionMainRowRef} className="matchup-section-label matchup-section-main">
             <td className="matchup-section-label-cell matchup-sticky-col matchup-sticky-col--1" colSpan={sectionLabelColSpan}>MAIN DECK</td>
             <td className="matchup-section-total-cell matchup-sticky-col matchup-sticky-col--2">{mainDeckTotal > 0 ? mainDeckTotal : ''}</td>
             {SHOW_TYPE_GROUP_COLUMNS ? (
