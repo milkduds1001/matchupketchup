@@ -50,11 +50,11 @@
 }
 
 .matchup-table col.col-arch-band-a {
-  background: #ece4cf;
+  background: #dfd1b3;
 }
 
 .matchup-table col.col-arch-band-b {
-  background: #dfd1b3;
+  background: #ece4cf;
 }
 
 /* Keep header rows above body when scrolling: thead in its own stacking context */

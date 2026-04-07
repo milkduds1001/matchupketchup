@@ -347,9 +347,17 @@ function Dashboard({ onGoHome }) {
   const archetypes = useMemo(() => {
     const raw = selectedMetagame?.archetypes
     if (!Array.isArray(raw)) return []
-    return raw.filter(
+    const filtered = raw.filter(
       (a) => a != null && typeof a === 'object' && typeof a.name === 'string' && a.name.trim()
     )
+    return [...filtered].sort((a, b) => {
+      const pa = Number.parseFloat(String(a?.metagamePercent ?? '').replace('%', '').trim())
+      const pb = Number.parseFloat(String(b?.metagamePercent ?? '').replace('%', '').trim())
+      const va = Number.isNaN(pa) ? 0 : pa
+      const vb = Number.isNaN(pb) ? 0 : pb
+      if (vb !== va) return vb - va
+      return String(a.name).localeCompare(String(b.name))
+    })
   }, [selectedMetagame])
   const safeCards = useMemo(() => normalizeDeckCards(cards), [cards])
   const pairSelected = selectedDecklistId && selectedMetagameId
