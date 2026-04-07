@@ -54,6 +54,12 @@
   min-width: calc(10ch * var(--table-cols, 5));
 }
 
+/* Separate borders fix misaligned row lines when the first columns are position:sticky */
+.matchup-table-scroll .matchup-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
 /* Tighter columns; allow header text to wrap */
 .matchup-table .col-card {
   width: calc(100% / var(--table-cols, 5));
@@ -215,7 +221,10 @@
 .matchup-table-scroll .matchup-table .matchup-sticky-col--span2 {
   position: sticky;
   left: 0;
+  width: calc(var(--matchup-sticky-card-w) + var(--matchup-sticky-qty-w));
   min-width: calc(var(--matchup-sticky-card-w) + var(--matchup-sticky-qty-w));
+  max-width: calc(var(--matchup-sticky-card-w) + var(--matchup-sticky-qty-w));
+  box-sizing: border-box;
 }
 
 .matchup-table-scroll .matchup-table thead .matchup-sticky-col--1,
@@ -228,8 +237,27 @@
   z-index: 6;
 }
 
-.matchup-table-scroll .matchup-table tbody td.matchup-sticky-col--2 {
-  box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.12);
+.matchup-table-scroll .matchup-table th.matchup-sticky-col--1,
+.matchup-table-scroll .matchup-table th.matchup-sticky-col--2,
+.matchup-table-scroll .matchup-table td.matchup-sticky-col--1,
+.matchup-table-scroll .matchup-table td.matchup-sticky-col--2 {
+  box-sizing: border-box;
+}
+
+.matchup-table-scroll .matchup-table th.matchup-sticky-col--1,
+.matchup-table-scroll .matchup-table td.matchup-sticky-col--1 {
+  width: var(--matchup-sticky-card-w);
+  min-width: var(--matchup-sticky-card-w);
+  max-width: var(--matchup-sticky-card-w);
+}
+
+.matchup-table-scroll .matchup-table th.matchup-sticky-col--2,
+.matchup-table-scroll .matchup-table td.matchup-sticky-col--2 {
+  width: var(--matchup-sticky-qty-w);
+  min-width: var(--matchup-sticky-qty-w);
+  max-width: var(--matchup-sticky-qty-w);
+  border-right: 2px solid var(--color-secondary);
+  box-shadow: none;
 }
 
 .matchup-table-scroll .matchup-table tbody tr.sideboard-row td.matchup-sticky-col--1,
@@ -253,6 +281,7 @@
 .matchup-table-scroll .matchup-table tfoot td.matchup-sticky-col--span2 {
   z-index: 7;
   background: var(--color-surface);
+  border-right: 2px solid var(--color-secondary);
 }
 
 .matchup-table td {

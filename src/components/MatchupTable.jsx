@@ -121,6 +121,7 @@ function MatchupTable({
   hideLands = false,
   onChangeCell,
   onCardHover,
+  onCardMove,
   onCardLeave,
 }) {
   function shouldRenderArchetype(arch) {
@@ -349,8 +350,12 @@ function MatchupTable({
                         <button
                           type="button"
                           className="matchup-card-preview-trigger"
-                          onMouseEnter={() => onCardHover?.(card.name)}
-                          onFocus={() => onCardHover?.(card.name)}
+                          onMouseEnter={(e) => onCardHover?.(card.name, e)}
+                          onMouseMove={(e) => onCardMove?.(e)}
+                          onFocus={(e) => {
+                            const r = e.currentTarget.getBoundingClientRect()
+                            onCardHover?.(card.name, { clientX: r.right + 8, clientY: r.top + 4 })
+                          }}
                           onMouseLeave={() => onCardLeave?.()}
                           onBlur={() => onCardLeave?.()}
                         >
@@ -385,8 +390,12 @@ function MatchupTable({
                 <button
                   type="button"
                   className="matchup-card-preview-trigger"
-                  onMouseEnter={() => onCardHover?.(card.name)}
-                  onFocus={() => onCardHover?.(card.name)}
+                  onMouseEnter={(e) => onCardHover?.(card.name, e)}
+                  onMouseMove={(e) => onCardMove?.(e)}
+                  onFocus={(e) => {
+                    const r = e.currentTarget.getBoundingClientRect()
+                    onCardHover?.(card.name, { clientX: r.right + 8, clientY: r.top + 4 })
+                  }}
                   onMouseLeave={() => onCardLeave?.()}
                   onBlur={() => onCardLeave?.()}
                 >
