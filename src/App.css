@@ -149,7 +149,7 @@
 
 .step-title {
   margin: 0 0 0.5rem 0;
-  font-size: 1.35rem;
+  font-size: clamp(2.35rem, 4vw, 2.7rem);
   font-weight: 400;
   font-family: var(--font-display);
   text-transform: uppercase;
@@ -1565,6 +1565,7 @@
 }
 
 .section-actions h2.step3-title {
+  font-size: clamp(2.35rem, 4vw, 2.7rem);
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1573,6 +1574,7 @@
 }
 
 .section-actions h2.step5-title {
+  font-size: clamp(2.35rem, 4vw, 2.7rem);
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1581,6 +1583,7 @@
 }
 
 .section-actions h2.step5-title .step5-line-normal {
+  font-size: 1rem;
   font-family: var(--font-body);
   text-transform: none;
   letter-spacing: normal;
@@ -1588,6 +1591,7 @@
 }
 
 .section-actions h2.step3-title .step3-line-normal {
+  font-size: 1rem;
   font-family: var(--font-body);
   text-transform: none;
   letter-spacing: normal;
