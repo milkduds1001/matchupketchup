@@ -613,11 +613,11 @@ function Dashboard({ onGoHome }) {
       matchupHydratedPairKeyRef.current = ''
       return
     }
-    const pairKey = `${userId}:${selectedDecklistId}:${selectedMetagameId}`
-    const data = getMatchupData(userId, selectedDecklistId, selectedMetagameId)
+    const deckMemoryKey = `${userId}:${selectedDecklist?.format || ''}:${selectedDecklist?.name || ''}`
+    const data = getMatchupData(userId, selectedDecklist, selectedMetagameId)
 
-    if (matchupHydratedPairKeyRef.current !== pairKey) {
-      matchupHydratedPairKeyRef.current = pairKey
+    if (matchupHydratedPairKeyRef.current !== deckMemoryKey) {
+      matchupHydratedPairKeyRef.current = deckMemoryKey
       const { next } = migrateLegacyUnifiedToPlayDraw(data.matchupValues, archetypes, safeCards)
       setMatchupValues(next)
       setKeysToMatchup(data.keysToMatchup ?? {})
@@ -628,15 +628,15 @@ function Dashboard({ onGoHome }) {
       const { next, changed } = migrateLegacyUnifiedToPlayDraw(prev, archetypes, safeCards)
       return changed ? next : prev
     })
-  }, [userId, selectedDecklistId, selectedMetagameId, pairSelected, archetypes, safeCards])
+  }, [userId, selectedDecklist, selectedMetagameId, pairSelected, archetypes, safeCards])
 
   const saveMatchupDataForPair = useCallback(() => {
     if (!userId || !selectedDecklistId || !selectedMetagameId) return
-    saveMatchupData(userId, selectedDecklistId, selectedMetagameId, {
+    saveMatchupData(userId, selectedDecklist, {
       matchupValues,
       keysToMatchup,
     })
-  }, [userId, selectedDecklistId, selectedMetagameId, matchupValues, keysToMatchup])
+  }, [userId, selectedDecklistId, selectedMetagameId, selectedDecklist, matchupValues, keysToMatchup])
 
   useEffect(() => {
     if (!pairSelected) return

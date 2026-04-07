@@ -216,6 +216,20 @@ function pairKey(decklistId, metagameId) {
   return `${decklistId}_${metagameId}`
 }
 
+function normalizeDeckPlanKeyPart(value) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
+function deckPlanKey(deckInfo) {
+  const format = normalizeDeckPlanKeyPart(deckInfo?.format)
+  const name = normalizeDeckPlanKeyPart(deckInfo?.name)
+  if (!format || !name) return ''
+  return `deck:${format}::${name}`
+}
+
 export function getDecklists(userId) {
   if (!userId) return []
   const raw = getStored(decklistsKey(userId), null)
@@ -264,30 +278,50 @@ export function deleteMetagame(userId, id) {
   setStored(metagamesKey(userId), list)
 }
 
-export function getMatchupData(userId, decklistId, metagameId) {
-  if (!userId || !decklistId || !metagameId) {
+export function getMatchupData(userId, deckInfo, metagameId = '') {
+  if (!userId || !deckInfo) {
     return { matchupValues: {}, keysToMatchup: {} }
   }
   const data = getStored(matchupDataKey(userId), null)
   if (!data || typeof data !== 'object') {
     return { matchupValues: {}, keysToMatchup: {} }
   }
-  const pair = data[pairKey(decklistId, metagameId)]
+  const planKey = deckPlanKey(deckInfo)
+  let pair = planKey ? data[planKey] : null
+  // Backward-compat: fallback to old deckId+metagame scoped key.
+  if ((!pair || typeof pair !== 'object') && deckInfo?.id && metagameId) {
+    pair = data[pairKey(deckInfo.id, metagameId)]
+  }
+  // Backward-compat: fallback to old deckId-only key, if it exists.
+  if ((!pair || typeof pair !== 'object') && deckInfo?.id) {
+    pair = data[`deckid:${deckInfo.id}`]
+  }
   if (!pair || typeof pair !== 'object') {
     return { matchupValues: {}, keysToMatchup: {} }
   }
-  return {
+  const normalized = {
     matchupValues: isMatchupValues(pair.matchupValues) ? pair.matchupValues : {},
     keysToMatchup: isKeysToMatchup(pair.keysToMatchup) ? pair.keysToMatchup : {},
   }
+  // Migrate legacy entry into new deck+format memory key.
+  if (planKey && pair !== data[planKey]) {
+    data[planKey] = normalized
+    setStored(matchupDataKey(userId), data)
+  }
+  return {
+    matchupValues: normalized.matchupValues,
+    keysToMatchup: normalized.keysToMatchup,
+  }
 }
 
-export function saveMatchupData(userId, decklistId, metagameId, payload) {
-  if (!userId || !decklistId || !metagameId) return
+export function saveMatchupData(userId, deckInfo, payload) {
+  if (!userId || !deckInfo) return
+  const planKey = deckPlanKey(deckInfo)
+  if (!planKey) return
   const key = matchupDataKey(userId)
   const data = getStored(key, null) || {}
   const obj = typeof data === 'object' && !Array.isArray(data) ? data : {}
-  obj[pairKey(decklistId, metagameId)] = {
+  obj[planKey] = {
     matchupValues: isMatchupValues(payload?.matchupValues) ? payload.matchupValues : {},
     keysToMatchup: isKeysToMatchup(payload?.keysToMatchup) ? payload.keysToMatchup : {},
   }
