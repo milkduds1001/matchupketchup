@@ -1,7 +1,8 @@
 /* Scroll container: sticky thead + frozen card/qty columns apply inside this element. */
 .matchup-table-scroll {
   /* px widths avoid ch/rounding drift between colgroup and sticky `left` */
-  --matchup-sticky-card-w: 200px;
+  /* Wide enough for group headers like "Creatures & Planeswalkers" (Bebas + tracking) on one line */
+  --matchup-sticky-card-w: 268px;
   --matchup-sticky-qty-w: 52px;
   /* Fallbacks until JS measures thead (ResizeObserver) */
   --matchup-thead-row1-height: 4.5rem;
@@ -541,12 +542,13 @@
   border-top: none;
 }
 
-.matchup-table td.matchup-arch-cell,
+/* Editable archetype cells: show colgroup band through transparent td — never match section/group fill classes */
+.matchup-table tbody td.matchup-arch-cell:not(.matchup-section-fill-arch--main):not(.matchup-section-fill-arch--sideboard):not(.matchup-group-fill-arch),
 .matchup-table tfoot td.matchup-arch-cell {
   background: transparent;
 }
 
-/* Section/group band cells must not use matchup-arch-cell (transparent); paint solid over colgroup stripes */
+/* Section/group band cells: solid fill over col-arch-band-* (sticky rows need explicit win over col + generic td) */
 .matchup-table td.matchup-section-fill-arch--main,
 .matchup-table td.matchup-group-fill-arch {
   background-color: var(--color-primary);
@@ -554,6 +556,15 @@
 
 .matchup-table td.matchup-section-fill-arch--sideboard {
   background-color: var(--color-info);
+}
+
+.matchup-table-scroll .matchup-table tbody tr.matchup-section-label > td.matchup-section-fill-arch--main,
+.matchup-table-scroll .matchup-table tbody tr.matchup-group-label > td.matchup-group-fill-arch {
+  background: var(--color-primary) !important;
+}
+
+.matchup-table-scroll .matchup-table tbody tr.matchup-section-label > td.matchup-section-fill-arch--sideboard {
+  background: var(--color-info) !important;
 }
 
 /* Keep the alternating beige tint visible behind editable cells too. */
