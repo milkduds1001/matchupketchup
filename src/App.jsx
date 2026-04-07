@@ -1006,6 +1006,26 @@ function Dashboard({ onGoHome }) {
     window.setTimeout(cleanup, 2500)
   }
 
+  function goDashboardHome() {
+    setManageView(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function goDecklistsNav() {
+    setManageView('decklists')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function goMetagamesNav() {
+    setManageMetaFormat(selectedFormat || formats[0] || DEFAULT_FORMATS[0])
+    setManageView('metagames')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const navHomeActive = manageView == null || manageView === 'formats'
+  const navDecklistsActive = manageView === 'decklists' || manageView === 'deck-editor'
+  const navMetagamesActive = manageView === 'metagames'
+
   async function handleDecklistOrg() {
     if (nextPrintRequirement) {
       window.alert(`You cannot do this yet. ${nextPrintRequirement}`)
@@ -1027,9 +1047,35 @@ function Dashboard({ onGoHome }) {
   return (
     <div className="app">
       <header className="app-header">
-        <button type="button" className="app-header-logo-btn" onClick={onGoHome} aria-label="Go to home">
+        <button type="button" className="app-header-logo-btn" onClick={onGoHome} aria-label="Go to marketing home">
           <img src={logo} alt="" className="app-header-logo" />
         </button>
+        <nav className="app-header-nav" aria-label="App sections">
+          <button
+            type="button"
+            className={`app-header-nav-link${navHomeActive ? ' app-header-nav-link--active' : ''}`}
+            onClick={goDashboardHome}
+            aria-current={navHomeActive ? 'page' : undefined}
+          >
+            Home
+          </button>
+          <button
+            type="button"
+            className={`app-header-nav-link${navDecklistsActive ? ' app-header-nav-link--active' : ''}`}
+            onClick={goDecklistsNav}
+            aria-current={navDecklistsActive ? 'page' : undefined}
+          >
+            Your decklists
+          </button>
+          <button
+            type="button"
+            className={`app-header-nav-link${navMetagamesActive ? ' app-header-nav-link--active' : ''}`}
+            onClick={goMetagamesNav}
+            aria-current={navMetagamesActive ? 'page' : undefined}
+          >
+            Your metagames
+          </button>
+        </nav>
         <div className="app-header-auth">
           <span className="header-user">Signed in as {user?.email}</span>
           <button
@@ -1824,7 +1870,7 @@ function Dashboard({ onGoHome }) {
               </div>
               <div className="section-actions section-actions--matchup-step4">
                 <div className="matchup-step4-top">
-                  <div className="matchup-step4-heading">
+                  <div className="matchup-step4-col matchup-step4-col--title">
                     <h2 className="step3-title">
                       Step 4: Create Your Sideboard Plan
                       <br />
@@ -1834,7 +1880,7 @@ function Dashboard({ onGoHome }) {
                       </span>
                     </h2>
                   </div>
-                  <div className="matchup-step4-right" role="group" aria-label="Matchup table tools">
+                  <div className="matchup-step4-col matchup-step4-col--formatting" role="group" aria-label="Formatting options">
                     <div className="matchup-toolbar-group matchup-toolbar-group--formatting">
                       <div className="matchup-toolbar-group-title">Formatting</div>
                       <div className="matchup-toolbar-group-actions matchup-toolbar-group-actions--formatting">
@@ -1864,6 +1910,8 @@ function Dashboard({ onGoHome }) {
                         </button>
                       </div>
                     </div>
+                  </div>
+                  <div className="matchup-step4-col matchup-step4-col--exports" role="group" aria-label="Export actions">
                     <div className="matchup-toolbar-group matchup-toolbar-group--exports">
                       <div className="matchup-toolbar-group-title">Exports</div>
                       <div className="matchup-toolbar-group-actions">

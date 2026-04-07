@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useLayoutEffect, useCallback } from 'react'
 import './MatchupTable.css'
 import { cellKeyForCard } from '../utils/matchupKeys.js'
 
@@ -191,6 +191,68 @@ function MatchupTable({
   const displayCols = (SHOW_TYPE_GROUP_COLUMNS ? 4 : 2) + Math.max(1, archColumnCount)
   const totalsLabelColSpan = SHOW_TYPE_GROUP_COLUMNS ? 4 : 2
 
+  const scrollRef = useRef(null)
+  const theadRef = useRef(null)
+
+  const syncTheadStickyVars = useCallback(() => {
+    const wrap = scrollRef.current
+    const thead = theadRef.current
+    if (!wrap || !thead) return
+    const theadRect = thead.getBoundingClientRect()
+    const tr2 = thead.querySelector('tr:nth-child(2)')
+    if (!tr2) return
+    const tr2Rect = tr2.getBoundingClientRect()
+    /* Row 1 height from geometry (robust with rowspan on card/qty cells) */
+    const h1 = Math.max(0, tr2Rect.top - theadRect.top)
+    const h2 = tr2Rect.height
+    if (h1 > 0) wrap.style.setProperty('--matchup-thead-row1-height', `${h1}px`)
+    if (h2 > 0) wrap.style.setProperty('--matchup-thead-row2-height', `${h2}px`)
+    if (theadRect.height > 0) {
+      wrap.style.setProperty('--matchup-thead-sticky-bottom', `${theadRect.height}px`)
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    syncTheadStickyVars()
+    const thead = theadRef.current
+    const wrap = scrollRef.current
+    if (!thead || !wrap) return undefined
+    const ro = new ResizeObserver(() => {
+      requestAnimationFrame(syncTheadStickyVars)
+    })
+    ro.observe(thead)
+    window.addEventListener('resize', syncTheadStickyVars)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', syncTheadStickyVars)
+    }
+  }, [syncTheadStickyVars, safeArchetypes, archColumnCount])
+
+  /** One <td> per archetype play/draw column so gold dividers align with card rows (when type columns off). */
+  function renderArchSpanFillCells(variant) {
+    return columnSlots.map((slot, slotIndex) => {
+      const archIndex = Math.floor(slotIndex / 2)
+      const dividerAfter =
+        slot.role === 'draw' && archIndex < archCount - 1 ? archDividerAfterClass(archIndex, archCount) : ''
+      const base = 'matchup-arch-cell'
+      let extra = ''
+      if (variant === 'section-main') {
+        extra = 'matchup-section-fill-arch matchup-section-fill-arch--main'
+      } else if (variant === 'section-sideboard') {
+        extra = 'matchup-section-fill-arch matchup-section-fill-arch--sideboard'
+      } else {
+        extra = 'matchup-group-fill-arch'
+      }
+      return (
+        <td
+          key={`${variant}-${slot.arch.name}-${slot.role}`}
+          className={`${extra} ${base}${dividerAfter ? ` ${dividerAfter}` : ''}`.trim()}
+          aria-hidden="true"
+        />
+      )
+    })
+  }
+
   function renderArchHeadCells() {
     return safeArchetypes.map((arch, archIndex) => {
       const name = arch.name || ''
@@ -288,7 +350,7 @@ function MatchupTable({
   }
 
   return (
-    <div className="matchup-table-scroll">
+    <div ref={scrollRef} className="matchup-table-scroll">
       <div className="matchup-table-wrapper">
       <table
         className="matchup-table"
@@ -309,7 +371,7 @@ function MatchupTable({
             return <col key={`${slot.arch.name}-${slot.role}`} className={`col-arch ${bandClass}`} />
           })}
         </colgroup>
-        <thead className="matchup-thead">
+        <thead ref={theadRef} className="matchup-thead">
           <tr>
             <th rowSpan={theadRowCount} className="th-card matchup-sticky-col matchup-sticky-col--1" aria-label="Card column" />
             <th rowSpan={theadRowCount} className="th-qty matchup-sticky-col matchup-sticky-col--2" aria-label="Quantity column" />
@@ -327,7 +389,11 @@ function MatchupTable({
           <tr className="matchup-section-label matchup-section-main">
             <td className="matchup-section-label-cell matchup-sticky-col matchup-sticky-col--1" colSpan={sectionLabelColSpan}>MAIN DECK</td>
             <td className="matchup-section-total-cell matchup-sticky-col matchup-sticky-col--2">{mainDeckTotal > 0 ? mainDeckTotal : ''}</td>
-            <td className="matchup-section-fill-cell" colSpan={sectionTailColSpan} />
+            {SHOW_TYPE_GROUP_COLUMNS ? (
+              <td className="matchup-section-fill-cell" colSpan={sectionTailColSpan} />
+            ) : (
+              renderArchSpanFillCells('section-main')
+            )}
           </tr>
           {GROUP_SORT_ORDER.map((groupLabel) => {
             const cardsInGroup = mainDeckCards.filter(
@@ -341,7 +407,11 @@ function MatchupTable({
                 <tr className="matchup-group-label">
                   <td className="matchup-group-label-cell matchup-sticky-col matchup-sticky-col--1" colSpan={sectionLabelColSpan}>{groupLabel}</td>
                   <td className="matchup-group-total-cell matchup-sticky-col matchup-sticky-col--2">{groupTotal > 0 ? groupTotal : ''}</td>
-                  <td className="matchup-group-fill-cell" colSpan={sectionTailColSpan} />
+                  {SHOW_TYPE_GROUP_COLUMNS ? (
+                    <td className="matchup-group-fill-cell" colSpan={sectionTailColSpan} />
+                  ) : (
+                    renderArchSpanFillCells('group')
+                  )}
                 </tr>
                 {!hideRowsForGroup &&
                   cardsInGroup.map((card) => (
@@ -380,7 +450,11 @@ function MatchupTable({
             <tr className="matchup-section-label matchup-section-sideboard">
               <td className="matchup-section-label-cell matchup-sticky-col matchup-sticky-col--1" colSpan={sectionLabelColSpan}>SIDEBOARD</td>
               <td className="matchup-section-total-cell matchup-sticky-col matchup-sticky-col--2">{sideboardTotal > 0 ? sideboardTotal : ''}</td>
-              <td className="matchup-section-fill-cell" colSpan={sectionTailColSpan} />
+              {SHOW_TYPE_GROUP_COLUMNS ? (
+                <td className="matchup-section-fill-cell" colSpan={sectionTailColSpan} />
+              ) : (
+                renderArchSpanFillCells('section-sideboard')
+              )}
             </tr>
           )}
 

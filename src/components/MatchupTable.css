@@ -1,9 +1,11 @@
 /* Scroll container: sticky thead + frozen card/qty columns apply inside this element. */
 .matchup-table-scroll {
-  /* Fixed widths so sticky `left` on column 2 lines up with column 1 */
-  --matchup-sticky-card-w: 22ch;
-  --matchup-sticky-qty-w: 3.25rem;
-  --matchup-thead-sticky-bottom: 4.5rem;
+  /* px widths avoid ch/rounding drift between colgroup and sticky `left` */
+  --matchup-sticky-card-w: 200px;
+  --matchup-sticky-qty-w: 52px;
+  /* Fallbacks until JS measures thead (ResizeObserver) */
+  --matchup-thead-row1-height: 4.5rem;
+  --matchup-thead-sticky-bottom: 6rem;
   width: 100%;
   max-width: 100%;
   overflow: auto;
@@ -179,9 +181,9 @@
   border-right: 2px solid var(--color-secondary);
 }
 
-/* Play/draw subheaders stick below archetype name + metagame % row */
+/* Play/draw row sticks directly under row 1; offset set from measured thead geometry */
 .matchup-table-scroll .matchup-table thead tr:nth-child(2) th {
-  top: 2.75rem;
+  top: var(--matchup-thead-row1-height, 4.5rem);
 }
 
 .matchup-table .th-playdraw-sub {
@@ -440,12 +442,36 @@
   border-bottom: 2px solid rgba(0, 0, 0, 0.15);
 }
 
+/* Per–play/draw cells so vertical gold rules align with data columns (replaces single colspan fill) */
+.matchup-table .matchup-section-fill-arch {
+  padding: 0;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+}
+
+.matchup-table .matchup-section-fill-arch--main {
+  background: var(--color-primary);
+  border-top: 1px solid var(--color-secondary);
+}
+
+.matchup-table .matchup-section-fill-arch--sideboard {
+  background: var(--color-info);
+  border-top: 2px solid var(--color-secondary);
+}
+
+.matchup-table .matchup-group-fill-arch {
+  padding: 0;
+  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
 .matchup-table .matchup-section-main .matchup-section-label-cell {
   border-top: none;
 }
 
 .matchup-table .matchup-section-main .matchup-section-total-cell,
-.matchup-table .matchup-section-main .matchup-section-fill-cell {
+.matchup-table .matchup-section-main .matchup-section-fill-cell,
+.matchup-table .matchup-section-main .matchup-section-fill-arch--main {
   border-top: none;
 }
 
@@ -455,7 +481,8 @@
 }
 
 .matchup-table .matchup-section-sideboard .matchup-section-total-cell,
-.matchup-table .matchup-section-sideboard .matchup-section-fill-cell {
+.matchup-table .matchup-section-sideboard .matchup-section-fill-cell,
+.matchup-table .matchup-section-sideboard .matchup-section-fill-arch--sideboard {
   background: var(--color-info);
   border-top: 2px solid var(--color-secondary);
 }
