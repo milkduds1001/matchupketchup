@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useAuth } from './contexts/AuthContext.jsx'
 import Login from './components/Login.jsx'
 import HomePage from './components/HomePage.jsx'
+import TipJarPage from './components/TipJarPage.jsx'
 import DeckUpload from './components/DeckUpload.jsx'
 import MatchupTable from './components/MatchupTable.jsx'
 import SideboardGuide from './components/SideboardGuide.jsx'
@@ -185,7 +186,7 @@ class DeckEditorErrorBoundary extends React.Component {
   }
 }
 
-function Dashboard({ onGoHome }) {
+function Dashboard({ onGoHome, onNavigateTipJar }) {
   const { user, logout } = useAuth()
   const [formats, setFormats] = useState(DEFAULT_FORMATS)
   const [decklists, setDecklists] = useState([])
@@ -202,6 +203,7 @@ function Dashboard({ onGoHome }) {
   const [hideLands, setHideLands] = useState(false)
   const [matchupDisplayCount, setMatchupDisplayCount] = useState('10') // '5' | '10' | 'all'
   const [resetMatchupModalOpen, setResetMatchupModalOpen] = useState(false)
+  const [clearNotesModalOpen, setClearNotesModalOpen] = useState(false)
   const [newFormatName, setNewFormatName] = useState('')
   const [deckName, setDeckName] = useState('')
   const [deckFormat, setDeckFormat] = useState(DEFAULT_FORMATS[0])
@@ -274,13 +276,16 @@ function Dashboard({ onGoHome }) {
   }, [userId])
 
   useEffect(() => {
-    if (!resetMatchupModalOpen) return
+    if (!resetMatchupModalOpen && !clearNotesModalOpen) return
     const onKey = (e) => {
-      if (e.key === 'Escape') setResetMatchupModalOpen(false)
+      if (e.key === 'Escape') {
+        setResetMatchupModalOpen(false)
+        setClearNotesModalOpen(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [resetMatchupModalOpen])
+  }, [resetMatchupModalOpen, clearNotesModalOpen])
 
   const deckMigrationSignature = useMemo(() => {
     return decklists
@@ -1074,6 +1079,9 @@ function Dashboard({ onGoHome }) {
             aria-current={navMetagamesActive ? 'page' : undefined}
           >
             Your metagames
+          </button>
+          <button type="button" className="app-header-nav-link" onClick={() => onNavigateTipJar?.()}>
+            Tip Jar
           </button>
         </nav>
         <div className="app-header-auth">
@@ -1980,6 +1988,47 @@ function Dashboard({ onGoHome }) {
                   </div>
                 </div>
               ) : null}
+              {clearNotesModalOpen ? (
+                <div
+                  className="matchup-reset-modal-backdrop"
+                  role="presentation"
+                  onClick={() => setClearNotesModalOpen(false)}
+                >
+                  <div
+                    className="matchup-reset-modal"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="clear-notes-modal-title"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h3 id="clear-notes-modal-title" className="matchup-reset-modal-title">
+                      Clear all notes?
+                    </h3>
+                    <p className="matchup-reset-modal-body">
+                      Are you sure? This removes every matchup note you&apos;ve written for this deck in Step 5.
+                    </p>
+                    <div className="matchup-reset-modal-actions">
+                      <button
+                        type="button"
+                        className="btn-reset matchup-reset-modal-confirm"
+                        onClick={() => {
+                          setKeysToMatchup({})
+                          setClearNotesModalOpen(false)
+                        }}
+                      >
+                        Yes, clear notes
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-print btn-print-step matchup-reset-modal-cancel"
+                        onClick={() => setClearNotesModalOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {typeof document !== 'undefined' &&
                 matchupCursorPreviewStyle &&
                 activePreviewCardName &&
@@ -2023,7 +2072,7 @@ function Dashboard({ onGoHome }) {
                 <button
                   type="button"
                   className="btn-reset"
-                  onClick={() => setKeysToMatchup({})}
+                  onClick={() => setClearNotesModalOpen(true)}
                   title="Clear all matchup notes"
                 >
                   Clear notes
@@ -2063,12 +2112,24 @@ export default function App() {
     if (appPage === 'app' && !user) setAppPage('home')
   }, [appPage, user])
 
+  if (appPage === 'tip-jar') {
+    return (
+      <TipJarPage
+        user={user}
+        onNavigateHome={() => setAppPage('home')}
+        onNavigateLogin={() => setAppPage('login')}
+        onNavigateApp={() => setAppPage('app')}
+      />
+    )
+  }
+
   if (appPage === 'home') {
     return (
       <HomePage
         user={user}
         onNavigateLogin={() => setAppPage('login')}
         onNavigateApp={() => setAppPage('app')}
+        onNavigateTipJar={() => setAppPage('tip-jar')}
         onLogoClick={() => {
           window.scrollTo({ top: 0, behavior: 'smooth' })
         }}
@@ -2094,5 +2155,7 @@ export default function App() {
     )
   }
 
-  return <Dashboard onGoHome={() => setAppPage('home')} />
+  return (
+    <Dashboard onGoHome={() => setAppPage('home')} onNavigateTipJar={() => setAppPage('tip-jar')} />
+  )
 }
