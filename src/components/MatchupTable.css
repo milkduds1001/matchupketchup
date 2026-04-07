@@ -1,3 +1,26 @@
+/* Scroll container: sticky thead + frozen card/qty columns apply inside this element. */
+.matchup-table-scroll {
+  /* Fixed widths so sticky `left` on column 2 lines up with column 1 */
+  --matchup-sticky-card-w: 22ch;
+  --matchup-sticky-qty-w: 3.25rem;
+  --matchup-thead-sticky-bottom: 4.5rem;
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+  max-height: min(78vh, 52rem);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--color-border) 85%, var(--color-secondary));
+  background: var(--color-surface);
+  -webkit-overflow-scrolling: touch;
+}
+
+.matchup-table-scroll--empty {
+  overflow: visible;
+  max-height: none;
+  border: none;
+  background: transparent;
+}
+
 .matchup-table-wrapper {
   margin: 0;
   padding: 0;
@@ -37,9 +60,19 @@
   min-width: 20ch;
 }
 
+.matchup-table-scroll .matchup-table col.col-card {
+  width: var(--matchup-sticky-card-w);
+  min-width: var(--matchup-sticky-card-w);
+}
+
 .matchup-table .col-qty {
   width: calc(100% / var(--table-cols, 5));
   min-width: 4ch;
+}
+
+.matchup-table-scroll .matchup-table col.col-qty {
+  width: var(--matchup-sticky-qty-w);
+  min-width: var(--matchup-sticky-qty-w);
 }
 
 .matchup-table .col-type,
@@ -57,13 +90,13 @@
   background: #ece4cf;
 }
 
-/* Keep header rows above body when scrolling: thead in its own stacking context */
-.matchup-table thead {
+/* Sticky header stack (scrolls within .matchup-table-scroll) */
+.matchup-table-scroll .matchup-table thead {
   position: relative;
   z-index: 10;
 }
 
-.matchup-table th {
+.matchup-table-scroll .matchup-table th {
   position: sticky;
   top: 0;
   z-index: 10;
@@ -141,7 +174,7 @@
 }
 
 /* Play/draw subheaders stick below archetype name + metagame % row */
-.matchup-table thead tr:nth-child(2) th {
+.matchup-table-scroll .matchup-table thead tr:nth-child(2) th {
   top: 2.75rem;
 }
 
@@ -156,7 +189,7 @@
 }
 
 /* One continuous yellow rule across the entire sticky header block. */
-.matchup-table thead.matchup-thead::after {
+.matchup-table-scroll .matchup-table thead.matchup-thead::after {
   content: '';
   position: absolute;
   left: 0;
@@ -166,6 +199,60 @@
   background: var(--color-secondary);
   z-index: 12;
   pointer-events: none;
+}
+
+/* Frozen first two columns when scrolling horizontally */
+.matchup-table-scroll .matchup-table .matchup-sticky-col--1 {
+  position: sticky;
+  left: 0;
+}
+
+.matchup-table-scroll .matchup-table .matchup-sticky-col--2 {
+  position: sticky;
+  left: var(--matchup-sticky-card-w);
+}
+
+.matchup-table-scroll .matchup-table .matchup-sticky-col--span2 {
+  position: sticky;
+  left: 0;
+  min-width: calc(var(--matchup-sticky-card-w) + var(--matchup-sticky-qty-w));
+}
+
+.matchup-table-scroll .matchup-table thead .matchup-sticky-col--1,
+.matchup-table-scroll .matchup-table thead .matchup-sticky-col--2 {
+  z-index: 32;
+}
+
+.matchup-table-scroll .matchup-table tbody td.matchup-sticky-col--1,
+.matchup-table-scroll .matchup-table tbody td.matchup-sticky-col--2 {
+  z-index: 6;
+}
+
+.matchup-table-scroll .matchup-table tbody td.matchup-sticky-col--2 {
+  box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.12);
+}
+
+.matchup-table-scroll .matchup-table tbody tr.sideboard-row td.matchup-sticky-col--1,
+.matchup-table-scroll .matchup-table tbody tr.sideboard-row td.matchup-sticky-col--2 {
+  background: color-mix(in srgb, var(--color-secondary-soft) 55%, var(--color-surface));
+}
+
+.matchup-table-scroll .matchup-table tbody tr.matchup-group-label td.matchup-sticky-col--1,
+.matchup-table-scroll .matchup-table tbody tr.matchup-group-label td.matchup-sticky-col--2 {
+  background: color-mix(in srgb, var(--color-card) 85%, var(--color-secondary-soft));
+}
+
+.matchup-table-scroll .matchup-table tbody tr:not(.matchup-group-label):not(.matchup-section-label):not(.sideboard-row) td.matchup-sticky-col--1 {
+  background: var(--color-surface);
+}
+
+.matchup-table-scroll .matchup-table tbody tr:not(.matchup-group-label):not(.matchup-section-label):not(.sideboard-row) td.matchup-sticky-col--2 {
+  background: var(--color-surface);
+}
+
+.matchup-table-scroll .matchup-table tfoot td.matchup-sticky-col--span2 {
+  z-index: 7;
+  background: var(--color-surface);
 }
 
 .matchup-table td {
@@ -190,6 +277,26 @@
 .matchup-table .card-name {
   font-weight: 500;
   white-space: nowrap;
+}
+
+.matchup-table .matchup-card-preview-trigger {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.matchup-table .matchup-card-preview-trigger:hover {
+  text-decoration: underline;
+}
+
+.matchup-table .matchup-card-preview-trigger:focus-visible {
+  outline: 2px solid var(--color-focus-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .matchup-table .card-type {
@@ -251,19 +358,20 @@
   color: rgba(43, 43, 43, 0.4);
 }
 
-/* Section labels: MAIN DECK and SIDEBOARD - stand out and stay visible when scrolling */
-.matchup-table .matchup-section-label td {
+/*
+ * Section labels (MAIN DECK / SIDEBOARD): freeze full row under thead while scrolling vertically.
+ * Scoped to .matchup-table-scroll so print / unscoped layout is unaffected.
+ */
+.matchup-table-scroll .matchup-table tr.matchup-section-label > td {
   position: sticky;
-  z-index: 2;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  top: var(--matchup-thead-sticky-bottom);
+  z-index: 8;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.matchup-table .matchup-section-main .matchup-section-label-cell {
-  top: 3.75rem; /* below sticky thead (archetype + metagame % + play/draw) */
-}
-
-.matchup-table .matchup-section-sideboard .matchup-section-label-cell {
-  top: 3.75rem;
+.matchup-table-scroll .matchup-table tr.matchup-section-label > td.matchup-sticky-col--1,
+.matchup-table-scroll .matchup-table tr.matchup-section-label > td.matchup-sticky-col--2 {
+  z-index: 14;
 }
 
 .matchup-table .matchup-section-label-cell {
@@ -408,3 +516,29 @@
   display: inline-block;
 }
 
+@media print {
+  .matchup-table-scroll {
+    overflow: visible !important;
+    max-height: none !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .matchup-table .matchup-sticky-col--1,
+  .matchup-table .matchup-sticky-col--2,
+  .matchup-table .matchup-sticky-col--span2 {
+    position: static !important;
+    left: auto !important;
+    box-shadow: none !important;
+  }
+
+  .matchup-table-scroll .matchup-table tr.matchup-section-label > td {
+    position: static !important;
+    top: auto !important;
+  }
+
+  .matchup-table-scroll .matchup-table th {
+    position: static !important;
+    top: auto !important;
+  }
+}

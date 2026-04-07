@@ -200,6 +200,7 @@ function Dashboard({ onGoHome }) {
   const [keysToMatchup, setKeysToMatchup] = useState({})
   const [hideLands, setHideLands] = useState(false)
   const [matchupDisplayCount, setMatchupDisplayCount] = useState('10') // '5' | '10' | 'all'
+  const [resetMatchupModalOpen, setResetMatchupModalOpen] = useState(false)
   const [newFormatName, setNewFormatName] = useState('')
   const [deckName, setDeckName] = useState('')
   const [deckFormat, setDeckFormat] = useState(DEFAULT_FORMATS[0])
@@ -268,6 +269,15 @@ function Dashboard({ onGoHome }) {
       cancelled = true
     }
   }, [userId])
+
+  useEffect(() => {
+    if (!resetMatchupModalOpen) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setResetMatchupModalOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [resetMatchupModalOpen])
 
   const deckMigrationSignature = useMemo(() => {
     return decklists
@@ -899,6 +909,17 @@ function Dashboard({ onGoHome }) {
     if (deckCardPreviewUrls[name] !== undefined) return
     const imageUrl = await fetchCardImageUrlByName(name)
     setDeckCardPreviewUrls((prev) => ({ ...prev, [name]: imageUrl }))
+  }
+
+  function handleMatchupCardHover(cardName) {
+    const name = String(cardName || '').trim()
+    if (!name) return
+    setActivePreviewCardName(name)
+    void ensureDeckCardPreview(name)
+  }
+
+  function handleMatchupCardLeave() {
+    setActivePreviewCardName('')
   }
 
   function handleAddFormat() {
@@ -1764,58 +1785,134 @@ function Dashboard({ onGoHome }) {
               <div className="matchup-print-banner">
                 {selectedDecklist?.name ?? '—'} vs. {selectedMetagame?.name ?? '—'}
               </div>
-              <div className="section-actions">
-                <h2 className="step3-title">
-                  Step 4: Create Your Sideboard Plan<br />
-                  <span className="step3-line-normal">Deck: {selectedDecklist?.name}</span><br />
-                  <span className="step3-line-normal">vs. {selectedMetagame?.name}</span>
-                </h2>
-                <label className="toggle-hide-lands">
-                  <input type="checkbox" checked={hideLands} onChange={(e) => setHideLands(e.target.checked)} />
-                  <span className="toggle-hide-lands-label">Hide lands in table &amp; matchup print</span>
-                </label>
-                <label className="matchup-display-count-label">
-                  Show decks
-                  <select
-                    className="crud-select narrow"
-                    value={matchupDisplayCount}
-                    onChange={(e) => setMatchupDisplayCount(e.target.value)}
-                  >
-                    <option value="5">Top 5</option>
-                    <option value="10">Top 10</option>
-                    <option value="all">All</option>
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  className="btn-reset"
-                  onClick={() => setMatchupValues({})}
-                  title="Clear all matchup cell values"
-                >
-                  Reset matchup values
-                </button>
-                <button
-                  type="button"
-                  className={`btn-print btn-print-step ${nextPrintRequirement ? 'btn-print-disabled' : ''}`}
-                  disabled={Boolean(nextPrintRequirement)}
-                  onClick={() => void handleDecklistOrg()}
-                  title={
-                    nextPrintRequirement ||
-                    'Copy main deck + sideboard as plain text, then open decklist.org to paste and print your registration sheet'
-                  }
-                >
-                  Copy deck &amp; open decklist.org
-                </button>
-                <button
-                  type="button"
-                  className={`btn-print btn-print-step ${nextPrintRequirement ? 'btn-print-disabled' : ''}`}
-                  disabled={Boolean(nextPrintRequirement)}
-                  onClick={() => runThemedPrint('matrix')}
-                  title={nextPrintRequirement || 'Print matchup matrix landscape (PDF)'}
-                >
-                  Print matchup matrix
-                </button>
+              <div className="section-actions section-actions--matchup-step4">
+                <div className="matchup-step4-heading">
+                  <h2 className="step3-title">
+                    Step 4: Create Your Sideboard Plan
+                    <br />
+                    <span className="step3-line-normal step3-line-deck-meta">
+                      <span className="step3-deck-line">Deck: {selectedDecklist?.name}</span>
+                      <span className="step3-vs-line">vs. {selectedMetagame?.name}</span>
+                    </span>
+                  </h2>
+                </div>
+                <div className="matchup-step4-toolbar" role="group" aria-label="Matchup table tools">
+                  <div className="matchup-toolbar-group matchup-toolbar-group--exports">
+                    <div className="matchup-toolbar-group-title">Exports</div>
+                    <div className="matchup-toolbar-group-actions">
+                      <button
+                        type="button"
+                        className={`btn-print btn-print-step matchup-toolbar-btn ${nextPrintRequirement ? 'btn-print-disabled' : ''}`}
+                        disabled={Boolean(nextPrintRequirement)}
+                        onClick={() => void handleDecklistOrg()}
+                        title={
+                          nextPrintRequirement ||
+                          'Copy main deck + sideboard as plain text, then open decklist.org to paste and print your registration sheet'
+                        }
+                      >
+                        Copy deck &amp; open decklist.org
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn-print btn-print-step matchup-toolbar-btn ${nextPrintRequirement ? 'btn-print-disabled' : ''}`}
+                        disabled={Boolean(nextPrintRequirement)}
+                        onClick={() => runThemedPrint('matrix')}
+                        title={nextPrintRequirement || 'Print matchup matrix landscape (PDF)'}
+                      >
+                        Print matchup matrix
+                      </button>
+                    </div>
+                  </div>
+                  <div className="matchup-toolbar-group matchup-toolbar-group--format">
+                    <div className="matchup-toolbar-group-title">Format</div>
+                    <div className="matchup-toolbar-group-actions">
+                      <label className="toggle-hide-lands matchup-toolbar-control">
+                        <input type="checkbox" checked={hideLands} onChange={(e) => setHideLands(e.target.checked)} />
+                        <span className="toggle-hide-lands-label">Hide lands</span>
+                      </label>
+                      <label className="matchup-display-count-label matchup-toolbar-control">
+                        Show decks
+                        <select
+                          className="crud-select narrow"
+                          value={matchupDisplayCount}
+                          onChange={(e) => setMatchupDisplayCount(e.target.value)}
+                        >
+                          <option value="5">Top 5</option>
+                          <option value="10">Top 10</option>
+                          <option value="all">All</option>
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        className="btn-reset matchup-toolbar-btn"
+                        onClick={() => setResetMatchupModalOpen(true)}
+                        title="Clear all matchup cell values"
+                      >
+                        Reset matchup values
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="matchup-hover-preview">
+                  {activePreviewCardName ? (
+                    <>
+                      <span className="matchup-hover-preview-title">{activePreviewCardName}</span>
+                      {deckCardPreviewUrls[activePreviewCardName] ? (
+                        <img
+                          src={deckCardPreviewUrls[activePreviewCardName]}
+                          alt={`${activePreviewCardName} preview`}
+                          className="matchup-hover-preview-image"
+                        />
+                      ) : deckCardPreviewUrls[activePreviewCardName] === null ? (
+                        <span className="matchup-hover-preview-fallback">No preview image</span>
+                      ) : (
+                        <span className="matchup-hover-preview-fallback">Loading preview...</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="matchup-hover-preview-fallback">Hover a card name to preview it.</span>
+                  )}
+                </div>
               </div>
+              {resetMatchupModalOpen ? (
+                <div
+                  className="matchup-reset-modal-backdrop"
+                  role="presentation"
+                  onClick={() => setResetMatchupModalOpen(false)}
+                >
+                  <div
+                    className="matchup-reset-modal"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="matchup-reset-modal-title"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h3 id="matchup-reset-modal-title" className="matchup-reset-modal-title">
+                      Reset matchup values?
+                    </h3>
+                    <p className="matchup-reset-modal-body">Are you sure? This clears every cell in the matchup matrix for this deck.</p>
+                    <div className="matchup-reset-modal-actions">
+                      <button
+                        type="button"
+                        className="btn-reset matchup-reset-modal-confirm"
+                        onClick={() => {
+                          setMatchupValues({})
+                          setResetMatchupModalOpen(false)
+                        }}
+                      >
+                        Yes, reset
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-print btn-print-step matchup-reset-modal-cancel"
+                        onClick={() => setResetMatchupModalOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <MatchupTable
                 cards={safeCards}
                 archetypes={displayedArchetypes}
@@ -1823,6 +1920,8 @@ function Dashboard({ onGoHome }) {
                 cardTypes={cardTypes}
                 hideLands={hideLands}
                 onChangeCell={handleMatchupChange}
+                onCardHover={handleMatchupCardHover}
+                onCardLeave={handleMatchupCardLeave}
               />
             </section>
 

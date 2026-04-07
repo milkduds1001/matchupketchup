@@ -120,6 +120,8 @@ function MatchupTable({
   cardTypes = {},
   hideLands = false,
   onChangeCell,
+  onCardHover,
+  onCardLeave,
 }) {
   function shouldRenderArchetype(arch) {
     const raw = arch?.metagamePercent
@@ -273,17 +275,20 @@ function MatchupTable({
 
   if (safeArchetypes.length === 0) {
     return (
-      <div className="matchup-table-wrapper matchup-table-wrapper--empty">
-        <p className="matchup-table-empty-msg">
-          No matchup columns yet. If you just picked a metagame, wait a moment — or open &quot;Add or modify metagames&quot;
-          and add at least one archetype with a name.
-        </p>
+      <div className="matchup-table-scroll matchup-table-scroll--empty">
+        <div className="matchup-table-wrapper matchup-table-wrapper--empty">
+          <p className="matchup-table-empty-msg">
+            No matchup columns yet. If you just picked a metagame, wait a moment — or open &quot;Add or modify metagames&quot;
+            and add at least one archetype with a name.
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="matchup-table-wrapper">
+    <div className="matchup-table-scroll">
+      <div className="matchup-table-wrapper">
       <table
         className="matchup-table"
         style={{ '--table-cols': displayCols }}
@@ -305,8 +310,8 @@ function MatchupTable({
         </colgroup>
         <thead className="matchup-thead">
           <tr>
-            <th rowSpan={theadRowCount} className="th-card" aria-label="Card column" />
-            <th rowSpan={theadRowCount} className="th-qty" aria-label="Quantity column" />
+            <th rowSpan={theadRowCount} className="th-card matchup-sticky-col matchup-sticky-col--1" aria-label="Card column" />
+            <th rowSpan={theadRowCount} className="th-qty matchup-sticky-col matchup-sticky-col--2" aria-label="Quantity column" />
             {SHOW_TYPE_GROUP_COLUMNS && (
               <>
                 <th rowSpan={theadRowCount} className="th-type">Type</th>
@@ -319,8 +324,8 @@ function MatchupTable({
         </thead>
         <tbody>
           <tr className="matchup-section-label matchup-section-main">
-            <td className="matchup-section-label-cell" colSpan={sectionLabelColSpan}>MAIN DECK</td>
-            <td className="matchup-section-total-cell">{mainDeckTotal > 0 ? mainDeckTotal : ''}</td>
+            <td className="matchup-section-label-cell matchup-sticky-col matchup-sticky-col--1" colSpan={sectionLabelColSpan}>MAIN DECK</td>
+            <td className="matchup-section-total-cell matchup-sticky-col matchup-sticky-col--2">{mainDeckTotal > 0 ? mainDeckTotal : ''}</td>
             <td className="matchup-section-fill-cell" colSpan={sectionTailColSpan} />
           </tr>
           {GROUP_SORT_ORDER.map((groupLabel) => {
@@ -333,15 +338,26 @@ function MatchupTable({
             return (
               <React.Fragment key={`group-${groupLabel}`}>
                 <tr className="matchup-group-label">
-                  <td className="matchup-group-label-cell" colSpan={sectionLabelColSpan}>{groupLabel}</td>
-                  <td className="matchup-group-total-cell">{groupTotal > 0 ? groupTotal : ''}</td>
+                  <td className="matchup-group-label-cell matchup-sticky-col matchup-sticky-col--1" colSpan={sectionLabelColSpan}>{groupLabel}</td>
+                  <td className="matchup-group-total-cell matchup-sticky-col matchup-sticky-col--2">{groupTotal > 0 ? groupTotal : ''}</td>
                   <td className="matchup-group-fill-cell" colSpan={sectionTailColSpan} />
                 </tr>
                 {!hideRowsForGroup &&
                   cardsInGroup.map((card) => (
                     <tr key={card.id ?? card.name}>
-                      <td className="card-name">{card.name}</td>
-                      <td>{card.quantity}</td>
+                      <td className="card-name matchup-sticky-col matchup-sticky-col--1">
+                        <button
+                          type="button"
+                          className="matchup-card-preview-trigger"
+                          onMouseEnter={() => onCardHover?.(card.name)}
+                          onFocus={() => onCardHover?.(card.name)}
+                          onMouseLeave={() => onCardLeave?.()}
+                          onBlur={() => onCardLeave?.()}
+                        >
+                          {card.name}
+                        </button>
+                      </td>
+                      <td className="matchup-sticky-col matchup-sticky-col--2">{card.quantity}</td>
                       {SHOW_TYPE_GROUP_COLUMNS && (
                         <>
                           <td className="card-type">{cardTypes[card.name] ?? '—'}</td>
@@ -357,16 +373,27 @@ function MatchupTable({
 
           {sideboardCards.length > 0 && (
             <tr className="matchup-section-label matchup-section-sideboard">
-              <td className="matchup-section-label-cell" colSpan={sectionLabelColSpan}>SIDEBOARD</td>
-              <td className="matchup-section-total-cell">{sideboardTotal > 0 ? sideboardTotal : ''}</td>
+              <td className="matchup-section-label-cell matchup-sticky-col matchup-sticky-col--1" colSpan={sectionLabelColSpan}>SIDEBOARD</td>
+              <td className="matchup-section-total-cell matchup-sticky-col matchup-sticky-col--2">{sideboardTotal > 0 ? sideboardTotal : ''}</td>
               <td className="matchup-section-fill-cell" colSpan={sectionTailColSpan} />
             </tr>
           )}
 
           {sideboardCards.map((card) => (
             <tr key={card.id ?? card.name} className="sideboard-row">
-              <td className="card-name">{card.name}</td>
-              <td>{card.quantity}</td>
+              <td className="card-name matchup-sticky-col matchup-sticky-col--1">
+                <button
+                  type="button"
+                  className="matchup-card-preview-trigger"
+                  onMouseEnter={() => onCardHover?.(card.name)}
+                  onFocus={() => onCardHover?.(card.name)}
+                  onMouseLeave={() => onCardLeave?.()}
+                  onBlur={() => onCardLeave?.()}
+                >
+                  {card.name}
+                </button>
+              </td>
+              <td className="matchup-sticky-col matchup-sticky-col--2">{card.quantity}</td>
               {SHOW_TYPE_GROUP_COLUMNS && (
                 <>
                   <td className="card-type">{cardTypes[card.name] ?? '—'}</td>
@@ -379,7 +406,7 @@ function MatchupTable({
         </tbody>
         <tfoot>
           <tr className="matchup-totals-row matchup-totals-row-in">
-            <td className="matchup-totals-label" colSpan={totalsLabelColSpan}>
+            <td className="matchup-totals-label matchup-sticky-col matchup-sticky-col--span2" colSpan={totalsLabelColSpan}>
               Total in
             </td>
             {columnSlots.map((slot, i) => {
@@ -403,7 +430,7 @@ function MatchupTable({
             })}
           </tr>
           <tr className="matchup-totals-row matchup-totals-row-out">
-            <td className="matchup-totals-label" colSpan={totalsLabelColSpan}>
+            <td className="matchup-totals-label matchup-sticky-col matchup-sticky-col--span2" colSpan={totalsLabelColSpan}>
               Total out
             </td>
             {columnSlots.map((slot, i) => {
@@ -428,6 +455,7 @@ function MatchupTable({
           </tr>
         </tfoot>
       </table>
+      </div>
     </div>
   )
 }

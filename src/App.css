@@ -1564,6 +1564,129 @@
   margin-right: auto;
 }
 
+/* Step 4 matchup: heading + grouped toolbar + preview stack vertically */
+.section-actions.section-actions--matchup-step4 {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+.section-actions.section-actions--matchup-step4 h2 {
+  margin-right: 0;
+  width: 100%;
+}
+
+.matchup-step4-heading {
+  width: 100%;
+}
+
+.matchup-step4-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.matchup-toolbar-group {
+  flex: 1 1 260px;
+  min-width: min(100%, 240px);
+  padding: 0.55rem 0.65rem 0.6rem;
+  border-radius: var(--radius-lg);
+  border: 2px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-secondary-soft));
+  box-shadow: var(--shadow-sm);
+}
+
+.matchup-toolbar-group-title {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-family: var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--diner-blue);
+}
+
+.matchup-toolbar-group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.matchup-toolbar-group-actions .matchup-toolbar-btn {
+  min-height: 2.25rem;
+}
+
+.matchup-toolbar-group-actions .matchup-toolbar-control {
+  margin: 0;
+}
+
+/* Softer control chrome inside grouped cards (consistent with bordered box) */
+.matchup-toolbar-group .toggle-hide-lands {
+  border-width: 1px;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+.matchup-reset-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(20, 20, 24, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.matchup-reset-modal {
+  width: 100%;
+  max-width: 26rem;
+  padding: 1.15rem 1.25rem 1.2rem;
+  border-radius: 14px;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.matchup-reset-modal-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--diner-blue);
+}
+
+.matchup-reset-modal-body {
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.matchup-reset-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.matchup-reset-modal-confirm {
+  margin: 0;
+}
+
+.matchup-reset-modal-cancel {
+  margin: 0;
+}
+
+.section-actions.section-actions--matchup-step4 .matchup-hover-preview {
+  width: 100%;
+  max-width: none;
+}
+
 .section-actions h2.step3-title {
   font-size: 1.7rem;
   line-height: 1.1;
@@ -1602,6 +1725,22 @@
   color: var(--charcoal);
 }
 
+/* Deck + metagame on one subtitle line (no blank row between) */
+.section-actions h2.step3-title .step3-line-deck-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  margin-top: 0.2rem;
+  line-height: 1.25;
+}
+
+.section-actions h2.step3-title .step3-deck-line,
+.section-actions h2.step3-title .step3-vs-line {
+  display: inline;
+  white-space: normal;
+}
+
 .toggle-hide-lands {
   display: inline-flex;
   align-items: center;
@@ -1637,6 +1776,42 @@
 
 .matchup-display-count-label .crud-select {
   min-width: 110px;
+}
+
+.matchup-hover-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.2rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 90%, #fff);
+  box-shadow: var(--shadow-sm);
+}
+
+.matchup-hover-preview-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  max-width: 12rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matchup-hover-preview-fallback {
+  font-size: 0.78rem;
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+}
+
+.matchup-hover-preview-image {
+  width: 72px;
+  height: auto;
+  border-radius: 6px;
+  display: block;
 }
 
 .btn-reset {
@@ -1760,6 +1935,10 @@
     display: none !important;
   }
 
+  .matchup-reset-modal-backdrop {
+    display: none !important;
+  }
+
   .print-header {
     display: none !important;
   }
@@ -1811,6 +1990,13 @@
     border: none !important;
     box-shadow: none !important;
     overflow: visible;
+  }
+
+  .matchup-table-scroll {
+    overflow: visible !important;
+    max-height: none !important;
+    border: none !important;
+    background: transparent !important;
   }
 
   .matchup-table-wrapper {
