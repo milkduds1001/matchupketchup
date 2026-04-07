@@ -1609,11 +1609,11 @@
   margin-right: auto;
 }
 
-/* Step 4 matchup: 3-across — title (plain) | Formatting | Exports */
+/* Step 4 matchup: 3-across — title + reset | Formatting | Exports */
 .section-actions.section-actions--matchup-step4 {
   flex-direction: column;
   align-items: stretch;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .section-actions.section-actions--matchup-step4 h2 {
@@ -1624,8 +1624,8 @@
 .matchup-step4-top {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.65rem 1rem;
-  align-items: stretch;
+  gap: 0.45rem 0.75rem;
+  align-items: start;
   width: 100%;
 }
 
@@ -1635,10 +1635,19 @@
   flex-direction: column;
 }
 
-/* Column 1: title + subtitles only — no card outline */
+/* Column 1: title, subtitle, reset — no card outline */
 .matchup-step4-col--title {
-  padding: 0.1rem 0.25rem 0 0;
+  padding: 0.05rem 0.2rem 0 0;
   justify-content: flex-start;
+  gap: 0;
+}
+
+.matchup-step4-reset-matchup {
+  margin-top: 0.4rem;
+  align-self: flex-start;
+  width: auto;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
 }
 
 .matchup-step4-col--formatting,
@@ -1646,17 +1655,16 @@
   justify-content: stretch;
 }
 
-/* Bordered tool panels fill their column */
+/* Bordered tool panels — compact; no min-height stretch */
 .matchup-step4-col--formatting .matchup-toolbar-group,
 .matchup-step4-col--exports .matchup-toolbar-group {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   width: 100%;
   margin: 0;
   display: flex;
   flex-direction: column;
-  min-height: 100%;
-  padding: 0.5rem 0.55rem 0.55rem;
+  padding: 0.38rem 0.45rem 0.42rem;
 }
 
 .matchup-step4-col--formatting .matchup-toolbar-group-actions--formatting,
@@ -1664,8 +1672,8 @@
   flex-direction: column;
   align-items: stretch;
   align-content: stretch;
-  gap: 0.65rem;
-  flex: 1 1 auto;
+  gap: 0.45rem;
+  flex: 0 1 auto;
 }
 
 .matchup-step4-col--formatting .matchup-toolbar-btn,
@@ -1686,10 +1694,14 @@
   flex: 1 1 auto;
 }
 
+.matchup-step4-col .matchup-toolbar-group-title {
+  margin-bottom: 0.28rem;
+}
+
 @media (max-width: 960px) {
   .matchup-step4-top {
     grid-template-columns: 1fr;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .matchup-step4-col--title {
@@ -1733,7 +1745,7 @@
 }
 
 .matchup-toolbar-group-actions--formatting {
-  gap: 1rem 1.35rem;
+  gap: 0.55rem 0.85rem;
 }
 
 /* Softer control chrome inside grouped cards (consistent with bordered box) */

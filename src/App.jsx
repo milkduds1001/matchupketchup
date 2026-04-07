@@ -1879,6 +1879,14 @@ function Dashboard({ onGoHome }) {
                         <span className="step3-vs-line">vs. {selectedMetagame?.name}</span>
                       </span>
                     </h2>
+                    <button
+                      type="button"
+                      className="btn-reset matchup-step4-reset-matchup"
+                      onClick={() => setResetMatchupModalOpen(true)}
+                      title="Clear all matchup cell values"
+                    >
+                      Reset matchup values
+                    </button>
                   </div>
                   <div className="matchup-step4-col matchup-step4-col--formatting" role="group" aria-label="Formatting options">
                     <div className="matchup-toolbar-group matchup-toolbar-group--formatting">
@@ -1900,14 +1908,6 @@ function Dashboard({ onGoHome }) {
                             <option value="all">All</option>
                           </select>
                         </label>
-                        <button
-                          type="button"
-                          className="btn-reset matchup-toolbar-btn"
-                          onClick={() => setResetMatchupModalOpen(true)}
-                          title="Clear all matchup cell values"
-                        >
-                          Reset matchup values
-                        </button>
                       </div>
                     </div>
                   </div>

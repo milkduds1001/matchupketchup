@@ -198,19 +198,6 @@
   box-shadow: none;
 }
 
-/* One continuous yellow rule across the entire sticky header block. */
-.matchup-table-scroll .matchup-table thead.matchup-thead::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: var(--color-secondary);
-  z-index: 12;
-  pointer-events: none;
-}
-
 /* Frozen first two columns when scrolling horizontally */
 .matchup-table-scroll .matchup-table .matchup-sticky-col--1 {
   position: sticky;
