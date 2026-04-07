@@ -537,8 +537,8 @@ function Dashboard({ onGoHome }) {
   const matchupCursorPreviewStyle = useMemo(() => {
     if (!matchupPreviewPoint || !activePreviewCardName) return null
     const margin = 14
-    const boxW = 140
-    const boxH = 220
+    const boxW = 280
+    const boxH = 440
     let left = matchupPreviewPoint.x + margin
     let top = matchupPreviewPoint.y + margin
     if (typeof window !== 'undefined') {
