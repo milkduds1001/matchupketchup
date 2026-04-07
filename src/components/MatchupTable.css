@@ -65,7 +65,7 @@
   font-family: var(--font-display, 'Bebas Neue', system-ui, sans-serif);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  border-bottom: 3px solid var(--color-secondary);
+  border-bottom: 0;
   box-shadow: 0 2px 8px rgba(184, 134, 11, 0.3);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
 }
@@ -143,8 +143,14 @@
   text-transform: none;
   letter-spacing: 0.03em;
   padding: 0.15rem 0.1rem;
-  border-bottom: 0;
-  box-shadow: inset 0 -2px 0 var(--color-secondary);
+  border-bottom: 2px solid var(--color-secondary);
+  box-shadow: none;
+}
+
+/* Keep one continuous yellow rule across row-spanning header cells too. */
+.matchup-table .th-card,
+.matchup-table .th-qty {
+  border-bottom: 2px solid var(--color-secondary);
 }
 
 .matchup-table td {
@@ -202,7 +208,7 @@
   text-align: center;
   border-radius: 8px;
   border: 2px solid rgba(184, 134, 11, 0.25);
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text);
   box-sizing: border-box;
 }
@@ -334,20 +340,20 @@
 
 /* Extend alternating archetype shading into table body cells (not just header). */
 .matchup-table tbody td.matchup-col-stripe--a {
-  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-secondary-soft));
+  background: #ece4cf !important;
 }
 
 .matchup-table tbody td.matchup-col-stripe--b {
-  background: color-mix(in srgb, var(--color-surface) 76%, var(--color-secondary-soft));
+  background: #dfd1b3 !important;
 }
 
 /* Keep the alternating beige tint visible behind editable cells too. */
 .matchup-table tbody td.matchup-col-stripe--a .matchup-input {
-  background: color-mix(in srgb, var(--color-surface) 84%, var(--color-secondary-soft));
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .matchup-table tbody td.matchup-col-stripe--b .matchup-input {
-  background: color-mix(in srgb, var(--color-surface) 70%, var(--color-secondary-soft));
+  background: rgba(255, 255, 255, 0.18);
 }
 
 /* Totals rows in tfoot - black text on light background for readability */
