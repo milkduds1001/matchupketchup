@@ -36,6 +36,10 @@ function formatsMatch(a, b) {
   return String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase()
 }
 
+function alphaCompare(a, b) {
+  return String(a ?? '').localeCompare(String(b ?? ''))
+}
+
 const BASIC_LAND_FALLBACK = new Set([
   'plains',
   'island',
@@ -494,8 +498,13 @@ function Dashboard({ onGoHome }) {
     })
   }
 
+  const sortedFormats = useMemo(
+    () => [...formats].sort((a, b) => alphaCompare(a, b)),
+    [formats]
+  )
+
   const decklistsForFormat = selectedFormat
-    ? sortDecklistsByLegality(decklists.filter((d) => (d.format || '') === selectedFormat))
+    ? [...decklists.filter((d) => (d.format || '') === selectedFormat)].sort((a, b) => alphaCompare(a?.name, b?.name))
     : []
 
   const decklistsFilteredForManage = manageDecklistFormatFilter
@@ -537,7 +546,7 @@ function Dashboard({ onGoHome }) {
 
   // Metagames that match the selected deck's format (for "Choose a Metagame" dropdown)
   const metagamesForDeckFormat = selectedDecklist
-    ? metagames.filter((m) => formatsMatch(m.format, selectedDecklist.format))
+    ? [...metagames.filter((m) => formatsMatch(m.format, selectedDecklist.format))].sort((a, b) => alphaCompare(a?.name, b?.name))
     : []
 
   function clearDeckSelection() {
@@ -975,7 +984,7 @@ function Dashboard({ onGoHome }) {
                       className="crud-select"
                     >
                       <option value="">—</option>
-                      {formats.map((f) => (
+                      {sortedFormats.map((f) => (
                         <option key={f} value={f}>
                           {f}
                         </option>
@@ -1083,7 +1092,7 @@ function Dashboard({ onGoHome }) {
                 <h2>Formats</h2>
                 <p className="crud-list-label">Default formats cannot be removed.</p>
                 <ul className="saved-list">
-                  {formats.map((formatName) => (
+                  {sortedFormats.map((formatName) => (
                     <li key={formatName} className="saved-item">
                       <span>{formatName}</span>
                       <div>
@@ -1144,7 +1153,7 @@ function Dashboard({ onGoHome }) {
                       className="crud-select decklist-format-filter-select"
                     >
                       <option value="">All formats</option>
-                      {formats.map((f) => (
+                      {sortedFormats.map((f) => (
                         <option key={f} value={f}>{f}</option>
                       ))}
                     </select>
@@ -1266,7 +1275,7 @@ function Dashboard({ onGoHome }) {
                         className="crud-input"
                       />
                       <select value={deckFormat} onChange={(e) => setDeckFormat(e.target.value)} className="crud-select narrow">
-                        {formats.map((f) => (
+                        {sortedFormats.map((f) => (
                           <option key={f} value={f}>{f}</option>
                         ))}
                       </select>
@@ -1387,7 +1396,7 @@ function Dashboard({ onGoHome }) {
                                 onChange={(e) => setDeckFormat(e.target.value)}
                                 className="crud-select narrow deck-editor-deck-meta-select"
                               >
-                                {formats.map((f) => (
+                                {sortedFormats.map((f) => (
                                   <option key={f} value={f}>{f}</option>
                                 ))}
                               </select>
@@ -1676,7 +1685,7 @@ function Dashboard({ onGoHome }) {
                           onChange={(e) => setManageMetaFormat(e.target.value)}
                           className="crud-select"
                         >
-                          {formats.map((f) => (
+                          {sortedFormats.map((f) => (
                             <option key={f} value={f}>
                               {f}
                             </option>
