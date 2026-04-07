@@ -95,7 +95,7 @@
 }
 
 .section-step.step-locked .step-title {
-  color: var(--color-text-muted);
+  color: var(--diner-blue);
 }
 
 .section-step.step-locked .crud-label {
@@ -154,7 +154,7 @@
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--color-primary);
+  color: var(--diner-blue);
 }
 
 .header-actions {
@@ -1563,7 +1563,7 @@
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--color-primary);
+  color: var(--diner-blue);
   font-weight: 400;
 }
 
@@ -1571,7 +1571,7 @@
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--color-primary);
+  color: var(--diner-blue);
   font-weight: 400;
 }
 

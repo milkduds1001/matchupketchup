@@ -97,7 +97,7 @@
   white-space: normal;
   word-break: break-word;
   line-height: 1.15;
-  font-size: 0.95rem;
+  font-size: 1.08rem;
   vertical-align: middle;
 }
 
@@ -117,7 +117,7 @@
 .matchup-table .th-arch-metagame-pct {
   display: block;
   font-weight: 400;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-family: var(--font-body, 'Inter', sans-serif);
   letter-spacing: 0.02em;
   opacity: 0.92;
@@ -268,7 +268,7 @@
 
 .matchup-table .matchup-section-label-cell {
   padding: 0.4rem 0.5rem;
-  font-size: 0.78rem;
+  font-size: 0.94rem;
   font-weight: 700;
   font-family: var(--font-display, 'Bebas Neue', sans-serif);
   letter-spacing: 0.12em;
@@ -285,6 +285,7 @@
   padding: 0.28rem 0.35rem;
   font-weight: 700;
   font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 0.9rem;
   letter-spacing: 0.06em;
   text-align: center;
 }
@@ -329,7 +330,7 @@
 /* Within the main deck, visual breaks for each group (Lands, Creatures & Planeswalkers, Other Spells) */
 .matchup-table .matchup-group-label .matchup-group-label-cell {
   padding: 0.28rem 0.5rem;
-  font-size: 0.74rem;
+  font-size: 0.84rem;
   font-weight: 700;
   font-family: var(--font-display, 'Bebas Neue', sans-serif);
   letter-spacing: 0.08em;
