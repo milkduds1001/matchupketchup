@@ -546,6 +546,16 @@
   background: transparent;
 }
 
+/* Section/group band cells must not use matchup-arch-cell (transparent); paint solid over colgroup stripes */
+.matchup-table td.matchup-section-fill-arch--main,
+.matchup-table td.matchup-group-fill-arch {
+  background-color: var(--color-primary);
+}
+
+.matchup-table td.matchup-section-fill-arch--sideboard {
+  background-color: var(--color-info);
+}
+
 /* Keep the alternating beige tint visible behind editable cells too. */
 .matchup-table td.matchup-arch-cell .matchup-input {
   background: rgba(255, 255, 255, 0.22);

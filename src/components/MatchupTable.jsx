@@ -242,7 +242,7 @@ function MatchupTable({
       const archIndex = Math.floor(slotIndex / 2)
       const dividerAfter =
         slot.role === 'draw' && archIndex < archCount - 1 ? archDividerAfterClass(archIndex, archCount) : ''
-      const base = 'matchup-arch-cell'
+      /* Do not use matchup-arch-cell here — it sets background:transparent and shows colgroup beige through */
       let extra = ''
       if (variant === 'section-main') {
         extra = 'matchup-section-fill-arch matchup-section-fill-arch--main'
@@ -254,7 +254,7 @@ function MatchupTable({
       return (
         <td
           key={`${variant}-${slot.arch.name}-${slot.role}`}
-          className={`${extra} ${base}${dividerAfter ? ` ${dividerAfter}` : ''}`.trim()}
+          className={`${extra}${dividerAfter ? ` ${dividerAfter}` : ''}`.trim()}
           aria-hidden="true"
         />
       )
