@@ -235,12 +235,11 @@ function MatchupTable({
   }
 
   function renderDataCells(card) {
-    return columnSlots.map((slot) => {
+    return columnSlots.map((slot, slotIndex) => {
       const { arch, role } = slot
-      const archIndex = safeArchetypes.findIndex((a) => a.name === arch.name)
+      const archIndex = Math.floor(slotIndex / 2)
       const dividerAfter =
         role === 'draw' && archIndex >= 0 ? archDividerAfterClass(archIndex, archCount) : ''
-      const stripeClass = archIndex % 2 === 0 ? 'matchup-col-stripe--a' : 'matchup-col-stripe--b'
       const primaryKey = cellKeyForCard(card, arch.name, role)
       const value = cellDisplayValue(values, card, slot)
       const num = value === '' ? NaN : Number.parseInt(String(value).trim(), 10)
@@ -254,7 +253,7 @@ function MatchupTable({
       const changeKey = primaryKey
       const aria = `${card.name} vs ${arch.name} (${role === 'play' ? 'on the play' : 'on the draw'})`
       return (
-        <td key={`${arch.name}-${role}`} className={`${stripeClass}${dividerAfter ? ` ${dividerAfter}` : ''}`}>
+        <td key={`${arch.name}-${role}`} className={`matchup-arch-cell${dividerAfter ? ` ${dividerAfter}` : ''}`}>
           <input
             className={`matchup-input ${valueClass}`}
             type="text"
@@ -298,11 +297,13 @@ function MatchupTable({
               <col className="col-group" />
             </>
           )}
-          {columnSlots.map((slot) => (
-            <col key={`${slot.arch.name}-${slot.role}`} className="col-arch" />
-          ))}
+          {columnSlots.map((slot, slotIndex) => {
+            const archIndex = Math.floor(slotIndex / 2)
+            const bandClass = archIndex % 2 === 0 ? 'col-arch-band-a' : 'col-arch-band-b'
+            return <col key={`${slot.arch.name}-${slot.role}`} className={`col-arch ${bandClass}`} />
+          })}
         </colgroup>
-        <thead>
+        <thead className="matchup-thead">
           <tr>
             <th rowSpan={theadRowCount} className="th-card" aria-label="Card column" />
             <th rowSpan={theadRowCount} className="th-qty" aria-label="Quantity column" />
@@ -390,7 +391,7 @@ function MatchupTable({
               return (
                 <td
                   key={`${slot.arch.name}-${slot.role}-in`}
-                  className={`matchup-totals-values${divAfter ? ` ${divAfter}` : ''}`}
+                  className={`matchup-totals-values matchup-arch-cell${divAfter ? ` ${divAfter}` : ''}`}
                 >
                   {hasAnyEntry ? (
                     <span className="matchup-totals-number">{sumIn}</span>
@@ -414,7 +415,7 @@ function MatchupTable({
               return (
                 <td
                   key={`${slot.arch.name}-${slot.role}-out`}
-                  className={`matchup-totals-values${divAfter ? ` ${divAfter}` : ''}`}
+                  className={`matchup-totals-values matchup-arch-cell${divAfter ? ` ${divAfter}` : ''}`}
                 >
                   {hasAnyEntry ? (
                     <span className="matchup-totals-number">{Math.abs(sumOut)}</span>

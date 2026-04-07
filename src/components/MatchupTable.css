@@ -49,6 +49,14 @@
   min-width: 10ch;
 }
 
+.matchup-table col.col-arch-band-a {
+  background: #ece4cf;
+}
+
+.matchup-table col.col-arch-band-b {
+  background: #dfd1b3;
+}
+
 /* Keep header rows above body when scrolling: thead in its own stacking context */
 .matchup-table thead {
   position: relative;
@@ -143,14 +151,21 @@
   text-transform: none;
   letter-spacing: 0.03em;
   padding: 0.15rem 0.1rem;
-  border-bottom: 2px solid var(--color-secondary);
+  border-bottom: 0;
   box-shadow: none;
 }
 
-/* Keep one continuous yellow rule across row-spanning header cells too. */
-.matchup-table .th-card,
-.matchup-table .th-qty {
-  border-bottom: 2px solid var(--color-secondary);
+/* One continuous yellow rule across the entire sticky header block. */
+.matchup-table thead.matchup-thead::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--color-secondary);
+  z-index: 12;
+  pointer-events: none;
 }
 
 .matchup-table td {
@@ -338,22 +353,14 @@
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
 }
 
-/* Extend alternating archetype shading into table body cells (not just header). */
-.matchup-table tbody td.matchup-col-stripe--a {
-  background: #ece4cf !important;
-}
-
-.matchup-table tbody td.matchup-col-stripe--b {
-  background: #dfd1b3 !important;
+.matchup-table td.matchup-arch-cell,
+.matchup-table tfoot td.matchup-arch-cell {
+  background: transparent;
 }
 
 /* Keep the alternating beige tint visible behind editable cells too. */
-.matchup-table tbody td.matchup-col-stripe--a .matchup-input {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.matchup-table tbody td.matchup-col-stripe--b .matchup-input {
-  background: rgba(255, 255, 255, 0.18);
+.matchup-table td.matchup-arch-cell .matchup-input {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 /* Totals rows in tfoot - black text on light background for readability */
