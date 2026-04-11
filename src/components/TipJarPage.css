@@ -1,0 +1,301 @@
+.tip-jar-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-page-background);
+  color: var(--color-text);
+}
+
+.tip-jar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid color-mix(in srgb, var(--color-info) 28%, var(--color-border));
+  background: color-mix(in srgb, var(--color-info) 10%, var(--color-page-background));
+}
+
+.tip-jar-logo-btn {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.tip-jar-logo-btn:focus-visible {
+  outline: 2px solid var(--color-focus-accent);
+  outline-offset: 3px;
+}
+
+.tip-jar-logo {
+  height: 56px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.tip-jar-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: auto;
+}
+
+.tip-jar-nav-link {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: var(--font-body);
+  color: var(--color-info);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+.tip-jar-nav-link:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.tip-jar-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
+.tip-jar-header-user {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  max-width: min(100%, 14rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tip-jar-cta {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: var(--font-body);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.tip-jar-cta--primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+
+.tip-jar-cta--primary:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.tip-jar-main {
+  flex: 1;
+  width: 100%;
+  padding: 2rem 1.25rem 3rem;
+  display: flex;
+  justify-content: center;
+}
+
+.tip-jar-article {
+  width: 100%;
+  max-width: 40rem;
+}
+
+.tip-jar-hero {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+}
+
+.tip-jar-title {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.65rem, 4vw, 2rem);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+}
+
+.tip-jar-lead {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  opacity: 0.95;
+}
+
+.tip-jar-section {
+  margin-bottom: 2rem;
+}
+
+.tip-jar-section--cta {
+  padding: 1.25rem 1.35rem;
+  border-radius: var(--radius-xl);
+  border: 2px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.tip-jar-section--philosophy {
+  padding: 1.1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-secondary-soft));
+  border: 1px solid color-mix(in srgb, var(--color-border) 90%, var(--color-secondary));
+}
+
+.tip-jar-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: var(--color-text);
+}
+
+.tip-jar-section--cta .tip-jar-section-title {
+  color: var(--color-primary);
+}
+
+.tip-jar-prose {
+  font-size: 0.98rem;
+  line-height: 1.65;
+  font-family: var(--font-body);
+}
+
+.tip-jar-prose p {
+  margin: 0 0 1rem;
+}
+
+.tip-jar-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.tip-jar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 1.15rem;
+}
+
+@media (min-width: 480px) {
+  .tip-jar-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.tip-jar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: var(--font-body);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+  flex: 1 1 auto;
+  min-width: min(100%, 11rem);
+  box-sizing: border-box;
+}
+
+.tip-jar-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.tip-jar-btn:focus-visible {
+  outline: 2px solid var(--color-focus-accent);
+  outline-offset: 2px;
+}
+
+.tip-jar-btn--stripe {
+  background: var(--color-text);
+  color: var(--color-surface);
+  border-color: var(--color-text);
+}
+
+.tip-jar-btn--stripe:hover {
+  background: color-mix(in srgb, var(--color-text) 88%, #fff 12%);
+}
+
+.tip-jar-btn--paypal {
+  background: color-mix(in srgb, #0070ba 12%, var(--color-surface));
+  color: #003087;
+  border-color: color-mix(in srgb, #0070ba 45%, var(--color-border));
+}
+
+.tip-jar-btn--paypal:hover {
+  background: color-mix(in srgb, #0070ba 20%, var(--color-surface));
+}
+
+.tip-jar-btn--kofi {
+  background: color-mix(in srgb, #ff5f5f 14%, var(--color-surface));
+  color: #c0392b;
+  border-color: color-mix(in srgb, #ff5f5f 40%, var(--color-border));
+}
+
+.tip-jar-btn--kofi:hover {
+  background: color-mix(in srgb, #ff5f5f 22%, var(--color-surface));
+}
+
+.tip-jar-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.98rem;
+  line-height: 1.6;
+  font-family: var(--font-body);
+}
+
+.tip-jar-list li {
+  margin-bottom: 0.4rem;
+}
+
+.tip-jar-list li:last-child {
+  margin-bottom: 0;
+}
+
+.tip-jar-footnote {
+  margin: 2rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  text-align: center;
+  font-family: var(--font-body);
+  font-style: italic;
+}
+
+@media (max-width: 520px) {
+  .tip-jar-main {
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .tip-jar-section--cta {
+    padding: 1rem 1rem;
+  }
+}

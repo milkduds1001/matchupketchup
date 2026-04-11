@@ -4,7 +4,7 @@ import './HomePage.css'
 /**
  * Public landing page. Default route for the app before sign-in.
  */
-export default function HomePage({ user, onNavigateLogin, onNavigateApp, onLogoClick }) {
+export default function HomePage({ user, onNavigateLogin, onNavigateApp, onNavigateTipJar, onLogoClick }) {
   function handleLogoClick() {
     onLogoClick?.()
   }
@@ -16,6 +16,9 @@ export default function HomePage({ user, onNavigateLogin, onNavigateApp, onLogoC
           <img src={logo} alt="" className="home-logo" />
         </button>
         <div className="home-header-actions">
+          <button type="button" className="home-header-cta" onClick={() => onNavigateTipJar?.()}>
+            Tip Jar
+          </button>
           {user ? (
             <>
               <span className="home-header-user">{user.email}</span>
