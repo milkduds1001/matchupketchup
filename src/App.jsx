@@ -204,6 +204,8 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   const [matchupDisplayCount, setMatchupDisplayCount] = useState('10') // '5' | '10' | 'all'
   const [resetMatchupModalOpen, setResetMatchupModalOpen] = useState(false)
   const [clearNotesModalOpen, setClearNotesModalOpen] = useState(false)
+  const resetMatchupDialogRef = useRef(null)
+  const clearNotesDialogRef = useRef(null)
   const [newFormatName, setNewFormatName] = useState('')
   const [deckName, setDeckName] = useState('')
   const [deckFormat, setDeckFormat] = useState(DEFAULT_FORMATS[0])
@@ -276,16 +278,24 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   }, [userId])
 
   useEffect(() => {
-    if (!resetMatchupModalOpen && !clearNotesModalOpen) return
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        setResetMatchupModalOpen(false)
-        setClearNotesModalOpen(false)
-      }
+    const el = resetMatchupDialogRef.current
+    if (!el) return
+    if (resetMatchupModalOpen) {
+      if (!el.open) el.showModal()
+    } else if (el.open) {
+      el.close()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [resetMatchupModalOpen, clearNotesModalOpen])
+  }, [resetMatchupModalOpen])
+
+  useEffect(() => {
+    const el = clearNotesDialogRef.current
+    if (!el) return
+    if (clearNotesModalOpen) {
+      if (!el.open) el.showModal()
+    } else if (el.open) {
+      el.close()
+    }
+  }, [clearNotesModalOpen])
 
   const deckMigrationSignature = useMemo(() => {
     return decklists
@@ -1950,94 +1960,6 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
                 </div>
               </div>
               {typeof document !== 'undefined' &&
-                resetMatchupModalOpen &&
-                createPortal(
-                  <div
-                    className="matchup-reset-modal-backdrop"
-                    role="presentation"
-                    onClick={() => setResetMatchupModalOpen(false)}
-                  >
-                    <div
-                      className="matchup-reset-modal"
-                      role="dialog"
-                      aria-modal="true"
-                      aria-labelledby="matchup-reset-modal-title"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <h3 id="matchup-reset-modal-title" className="matchup-reset-modal-title">
-                        Reset matchup values?
-                      </h3>
-                      <p className="matchup-reset-modal-body">
-                        Are you sure? This clears every cell in the matchup matrix for this deck.
-                      </p>
-                      <div className="matchup-reset-modal-actions">
-                        <button
-                          type="button"
-                          className="btn-reset matchup-reset-modal-confirm"
-                          onClick={() => {
-                            setMatchupValues({})
-                            setResetMatchupModalOpen(false)
-                          }}
-                        >
-                          Yes, reset
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-print btn-print-step matchup-reset-modal-cancel"
-                          onClick={() => setResetMatchupModalOpen(false)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  </div>,
-                  document.body
-                )}
-              {typeof document !== 'undefined' &&
-                clearNotesModalOpen &&
-                createPortal(
-                  <div
-                    className="matchup-reset-modal-backdrop"
-                    role="presentation"
-                    onClick={() => setClearNotesModalOpen(false)}
-                  >
-                    <div
-                      className="matchup-reset-modal"
-                      role="dialog"
-                      aria-modal="true"
-                      aria-labelledby="clear-notes-modal-title"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <h3 id="clear-notes-modal-title" className="matchup-reset-modal-title">
-                        Clear all notes?
-                      </h3>
-                      <p className="matchup-reset-modal-body">
-                        Are you sure? This removes every matchup note you&apos;ve written for this deck in Step 5.
-                      </p>
-                      <div className="matchup-reset-modal-actions">
-                        <button
-                          type="button"
-                          className="btn-reset matchup-reset-modal-confirm"
-                          onClick={() => {
-                            setKeysToMatchup({})
-                            setClearNotesModalOpen(false)
-                          }}
-                        >
-                          Yes, clear notes
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-print btn-print-step matchup-reset-modal-cancel"
-                          onClick={() => setClearNotesModalOpen(false)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  </div>,
-                  document.body
-                )}
-              {typeof document !== 'undefined' &&
                 matchupCursorPreviewStyle &&
                 activePreviewCardName &&
                 createPortal(
@@ -2108,6 +2030,77 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
 
       </main>
       </DashboardErrorBoundary>
+
+      {/* Native <dialog> uses the browser top layer so the overlay always appears above app stacking contexts */}
+      <dialog
+        ref={resetMatchupDialogRef}
+        className="matchup-native-dialog"
+        aria-labelledby="matchup-reset-modal-title"
+        onClose={() => setResetMatchupModalOpen(false)}
+      >
+        <div className="matchup-reset-modal matchup-reset-modal--in-native-dialog">
+          <h3 id="matchup-reset-modal-title" className="matchup-reset-modal-title">
+            Reset matchup values?
+          </h3>
+          <p className="matchup-reset-modal-body">
+            Are you sure? This clears every cell in the matchup matrix for this deck.
+          </p>
+          <div className="matchup-reset-modal-actions">
+            <button
+              type="button"
+              className="btn-reset matchup-reset-modal-confirm"
+              onClick={() => {
+                setMatchupValues({})
+                resetMatchupDialogRef.current?.close()
+              }}
+            >
+              Yes, reset
+            </button>
+            <button
+              type="button"
+              className="btn-print btn-print-step matchup-reset-modal-cancel"
+              onClick={() => resetMatchupDialogRef.current?.close()}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog
+        ref={clearNotesDialogRef}
+        className="matchup-native-dialog"
+        aria-labelledby="clear-notes-modal-title"
+        onClose={() => setClearNotesModalOpen(false)}
+      >
+        <div className="matchup-reset-modal matchup-reset-modal--in-native-dialog">
+          <h3 id="clear-notes-modal-title" className="matchup-reset-modal-title">
+            Clear all notes?
+          </h3>
+          <p className="matchup-reset-modal-body">
+            Are you sure? This removes every matchup note you&apos;ve written for this deck in Step 5.
+          </p>
+          <div className="matchup-reset-modal-actions">
+            <button
+              type="button"
+              className="btn-reset matchup-reset-modal-confirm"
+              onClick={() => {
+                setKeysToMatchup({})
+                clearNotesDialogRef.current?.close()
+              }}
+            >
+              Yes, clear notes
+            </button>
+            <button
+              type="button"
+              className="btn-print btn-print-step matchup-reset-modal-cancel"
+              onClick={() => clearNotesDialogRef.current?.close()}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </dialog>
     </div>
   )
 }

@@ -1767,6 +1767,25 @@
   backdrop-filter: blur(2px);
 }
 
+/* <dialog showModal()> — top layer; avoids invisibility when ancestors create stacking contexts */
+.matchup-native-dialog {
+  padding: 0;
+  border: none;
+  background: transparent;
+  max-width: calc(100vw - 2rem);
+  margin: auto;
+}
+
+.matchup-native-dialog::backdrop {
+  background: rgba(20, 20, 24, 0.45);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.matchup-reset-modal--in-native-dialog {
+  margin: 0;
+}
+
 .matchup-reset-modal {
   width: 100%;
   max-width: 26rem;
@@ -2063,6 +2082,7 @@
   }
 
   .matchup-reset-modal-backdrop,
+  .matchup-native-dialog,
   .matchup-cursor-preview {
     display: none !important;
   }
