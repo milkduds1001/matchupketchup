@@ -1,24 +1,23 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { useState } from 'react'
+import { AuthContext } from './auth-context.js'
 
 const STORAGE_USERS = 'mtg-users'
 const STORAGE_CURRENT = 'mtg-current-user'
 
-const AuthContext = createContext(null)
+function readStoredUser() {
+  try {
+    const raw = localStorage.getItem(STORAGE_CURRENT)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (data?.id && data?.email) return data
+    return null
+  } catch {
+    return null
+  }
+}
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_CURRENT)
-      if (raw) {
-        const data = JSON.parse(raw)
-        if (data?.id && data?.email) setUser(data)
-      }
-    } catch {
-      setUser(null)
-    }
-  }, [])
+  const [user, setUser] = useState(() => readStoredUser())
 
   function login(email, password) {
     const users = getUsers()
@@ -30,7 +29,9 @@ export function AuthProvider({ children }) {
     setUser(current)
     try {
       localStorage.setItem(STORAGE_CURRENT, JSON.stringify(current))
-    } catch {}
+    } catch {
+      // localStorage may be unavailable (private mode, quota)
+    }
     return {}
   }
 
@@ -57,7 +58,9 @@ export function AuthProvider({ children }) {
     setUser(null)
     try {
       localStorage.removeItem(STORAGE_CURRENT)
-    } catch {}
+    } catch {
+      // localStorage may be unavailable (private mode, quota)
+    }
   }
 
   return (
@@ -76,10 +79,4 @@ function getUsers() {
   } catch {
     return []
   }
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
-  return ctx
 }

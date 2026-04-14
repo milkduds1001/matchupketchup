@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from '../contexts/AuthContext.jsx'
+import { useAuth } from '../contexts/useAuth.js'
 import logo from '../assets/matchupketchup_logo_mark.png'
 import './Login.css'
 

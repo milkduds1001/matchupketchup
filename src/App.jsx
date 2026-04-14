@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { useAuth } from './contexts/AuthContext.jsx'
+import { useAuth } from './contexts/useAuth.js'
 import Login from './components/Login.jsx'
 import HomePage from './components/HomePage.jsx'
 import TipJarPage from './components/TipJarPage.jsx'
@@ -135,7 +135,6 @@ class DashboardErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    // eslint-disable-next-line no-console
     console.error('Dashboard render error:', error, info?.componentStack)
   }
 
@@ -169,8 +168,6 @@ class DeckEditorErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error) {
-    // Keep console trace during troubleshooting.
-    // eslint-disable-next-line no-console
     console.error('Deck editor crashed:', error)
   }
 
@@ -413,7 +410,6 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   const pairSelected = selectedDecklistId && selectedMetagameId
   const isStep1Complete = Boolean(selectedFormat)
   const isStep2Complete = Boolean(selectedDecklistId)
-  const isStep3Complete = Boolean(selectedMetagameId)
   const isStep2Locked = !isStep1Complete
   const isStep3Locked = !isStep2Complete
   const nextPrintRequirement = !selectedFormat
@@ -1440,6 +1436,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
                 <button
                   type="button"
                   className={`btn-save deck-editor-save-btn${deckEditorIsDirty ? ' deck-editor-save-btn--dirty' : ''}`}
+                  disabled={!deckEditorCanSaveChanges}
                   onClick={handleSaveDecklist}
                 >
                   {!selectedDecklistId ? 'Save deck' : 'Save Changes'}
@@ -2108,10 +2105,6 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
 export default function App() {
   const { user } = useAuth()
   const [appPage, setAppPage] = useState('home')
-
-  useEffect(() => {
-    if (appPage === 'app' && !user) setAppPage('home')
-  }, [appPage, user])
 
   if (appPage === 'tip-jar') {
     return (

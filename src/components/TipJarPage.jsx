@@ -1,19 +1,10 @@
 import logo from '../assets/matchupketchup_logo_mark.png'
+import { TIP_JAR_PAYMENT_LINKS } from './tipJarLinks.js'
 import './TipJarPage.css'
 
 /**
  * Optional tip / support page (About-adjacent, community-first).
- *
- * ---------------------------------------------------------------------------
- * PAYMENT LINKS — replace placeholders with your real URLs before launch:
- * ---------------------------------------------------------------------------
  */
-export const TIP_JAR_PAYMENT_LINKS = {
-  stripe: 'https://your-stripe-link',
-  paypal: 'https://your-paypal-link',
-  kofi: 'https://your-kofi-link',
-}
-
 export default function TipJarPage({ user, onNavigateHome, onNavigateLogin, onNavigateApp }) {
   return (
     <div className="tip-jar-page">

@@ -89,7 +89,7 @@ function MatchupSummary({ cards, archetypes, matchupValues = {} }) {
         <div className="matchup-summary-block">
           <h3>Best 3 (by weighted score)</h3>
           <ol>
-            {best3.map(({ card, weightedScore }, i) => (
+            {best3.map(({ card, weightedScore }) => (
               <li key={card.id ?? card.name}>
                 {card.name} — {weightedScore.toFixed(2)}
               </li>
