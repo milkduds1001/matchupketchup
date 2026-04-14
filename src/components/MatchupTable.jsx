@@ -1,54 +1,12 @@
-import React, { useRef, useLayoutEffect, useCallback } from 'react'
+import React, { useRef, useLayoutEffect, useCallback, useMemo } from 'react'
 import './MatchupTable.css'
 import { cellKeyForCard } from '../utils/matchupKeys.js'
-
-const TYPE_SORT_ORDER = [
-  'Land',
-  'Creature',
-  'Planeswalker',
-  'Artifact',
-  'Enchantment',
-  'Instant',
-  'Sorcery',
-  'Tribal',
-]
-const TYPE_ORDER_MAP = Object.fromEntries(TYPE_SORT_ORDER.map((t, i) => [t, i]))
-
-/** Bucket labels: many type_lines map to one of these three groups. */
-export const CARD_GROUP_CREATURES_PLANESWALKERS = 'Creatures & Planeswalkers'
-export const CARD_GROUP_OTHER_SPELLS = 'Other Spells'
-export const CARD_GROUP_LANDS = 'Lands'
-
-// Display order: Creatures & Planeswalkers, then Other Spells, then Lands
-const GROUP_SORT_ORDER = [
-  CARD_GROUP_CREATURES_PLANESWALKERS,
-  CARD_GROUP_OTHER_SPELLS,
+import {
   CARD_GROUP_LANDS,
-]
-const GROUP_ORDER_MAP = Object.fromEntries(GROUP_SORT_ORDER.map((g, i) => [g, i]))
-
-/**
- * Assign a card to exactly one display group from its type_line.
- * 1) If type includes "land" → Lands
- * 2) Else if type includes "creature" or "planeswalker" → Creatures & Planeswalkers
- * 3) Else → Other Spells
- */
-export function getCardGroup(typeLine) {
-  if (!typeLine || typeof typeLine !== 'string') return CARD_GROUP_OTHER_SPELLS
-  const lower = typeLine.toLowerCase()
-  if (lower.includes('land')) return CARD_GROUP_LANDS
-  if (lower.includes('creature') || lower.includes('planeswalker')) return CARD_GROUP_CREATURES_PLANESWALKERS
-  return CARD_GROUP_OTHER_SPELLS
-}
-
-function getTypeSortKey(typeLine) {
-  if (!typeLine || typeof typeLine !== 'string') return [TYPE_SORT_ORDER.length, '']
-  const mainPart = typeLine.split(/\s*[—\-]\s*/)[0].trim()
-  const types = mainPart ? mainPart.split(/\s+/) : []
-  const primary = types.find((t) => TYPE_ORDER_MAP[t] !== undefined) || types[0] || ''
-  const rank = TYPE_ORDER_MAP[primary] ?? TYPE_SORT_ORDER.length
-  return [rank, typeLine]
-}
+  GROUP_ORDER_MAP,
+  GROUP_SORT_ORDER,
+  getCardGroup,
+} from '../utils/cardGrouping.js'
 
 // Sort by group first (Creatures & Planeswalkers > Other Spells > Lands),
 // then by descending quantity within the group, then alphabetically by name.
@@ -109,6 +67,12 @@ function normalizeCellValueByZone(raw, card) {
   return String(signed)
 }
 
+/** Stable id for grid row index (main vs sideboard, id vs name). */
+function matchupNavRowKey(card) {
+  const zone = card?.zone === 'sideboard' ? 'sideboard' : 'main'
+  return `${card?.id ?? card?.name}|${zone}`
+}
+
 /**
  * MatchupTable - Renders a table of cards with quantities and editable per-archetype cells.
  * Each archetype has two columns: on the play and on the draw.
@@ -152,6 +116,101 @@ function MatchupTable({
   )
   const theadRowCount = 2
   const columnSlots = getColumnSlots(safeArchetypes)
+
+  const navigableCards = useMemo(() => {
+    const rows = []
+    const rowVisible = (card) => {
+      if (
+        card.zone !== 'sideboard' &&
+        hideLands &&
+        getCardGroup(cardTypes[card.name]) === CARD_GROUP_LANDS
+      ) {
+        return false
+      }
+      return true
+    }
+    for (const groupLabel of GROUP_SORT_ORDER) {
+      const cardsInGroup = mainDeckCards.filter(
+        (card) => getCardGroup(cardTypes[card.name]) === groupLabel
+      )
+      if (cardsInGroup.length === 0) continue
+      const hideRowsForGroup = hideLands && groupLabel === CARD_GROUP_LANDS
+      if (hideRowsForGroup) continue
+      for (const card of cardsInGroup) {
+        if (!rowVisible(card)) continue
+        rows.push(card)
+      }
+    }
+    for (const card of sideboardCards) {
+      rows.push(card)
+    }
+    return rows
+  }, [mainDeckCards, sideboardCards, cardTypes, hideLands])
+
+  const rowIndexByCardKey = useMemo(() => {
+    const m = new Map()
+    navigableCards.forEach((card, i) => {
+      m.set(matchupNavRowKey(card), i)
+    })
+    return m
+  }, [navigableCards])
+
+  const cellRefMap = useRef(new Map())
+  const setCellInputRef = useCallback((rowIndex, colIndex, el) => {
+    const k = `${rowIndex},${colIndex}`
+    if (el) cellRefMap.current.set(k, el)
+    else cellRefMap.current.delete(k)
+  }, [])
+
+  const focusCellInput = useCallback((rowIndex, colIndex, cursor = 'end') => {
+    const el = cellRefMap.current.get(`${rowIndex},${colIndex}`)
+    if (!el) return
+    el.focus()
+    const len = el.value.length
+    if (cursor === 'start') el.setSelectionRange(0, 0)
+    else if (cursor === 'end') el.setSelectionRange(len, len)
+  }, [])
+
+  function handleMatchupCellKeyDown(e, rowIndex, colIndex) {
+    const nRows = navigableCards.length
+    const nCols = columnSlots.length
+    if (nRows === 0 || nCols === 0) return
+
+    if (e.key === 'ArrowDown') {
+      if (rowIndex < nRows - 1) {
+        e.preventDefault()
+        focusCellInput(rowIndex + 1, colIndex, 'end')
+      }
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      if (rowIndex > 0) {
+        e.preventDefault()
+        focusCellInput(rowIndex - 1, colIndex, 'end')
+      }
+      return
+    }
+
+    const input = e.target
+    if (!(input instanceof HTMLInputElement)) return
+
+    if (e.key === 'ArrowRight') {
+      const atEnd =
+        input.selectionStart === input.value.length && input.selectionEnd === input.value.length
+      if (atEnd && colIndex < nCols - 1) {
+        e.preventDefault()
+        focusCellInput(rowIndex, colIndex + 1, 'start')
+      }
+      return
+    }
+    if (e.key === 'ArrowLeft') {
+      const atStart = input.selectionStart === 0 && input.selectionEnd === 0
+      if (atStart && colIndex > 0) {
+        e.preventDefault()
+        focusCellInput(rowIndex, colIndex - 1, 'end')
+      }
+    }
+  }
 
   function cardRowVisible(card) {
     if (
@@ -308,6 +367,8 @@ function MatchupTable({
   }
 
   function renderDataCells(card) {
+    const rowIndex = rowIndexByCardKey.get(matchupNavRowKey(card))
+    const gridNav = rowIndex !== undefined
     return columnSlots.map((slot, slotIndex) => {
       const { arch, role } = slot
       const archIndex = Math.floor(slotIndex / 2)
@@ -332,11 +393,25 @@ function MatchupTable({
             type="text"
             inputMode="numeric"
             value={value}
+            ref={
+              gridNav
+                ? (el) => {
+                    setCellInputRef(rowIndex, slotIndex, el)
+                  }
+                : undefined
+            }
             onChange={(e) => {
               const next = normalizeCellValueByZone(e.target.value, card)
               if (next == null) return
               onChangeCell?.(changeKey, arch.name, next)
             }}
+            onKeyDown={
+              gridNav
+                ? (e) => {
+                    handleMatchupCellKeyDown(e, rowIndex, slotIndex)
+                  }
+                : undefined
+            }
             aria-label={aria}
           />
         </td>

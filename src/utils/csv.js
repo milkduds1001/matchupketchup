@@ -9,6 +9,7 @@
  */
 
 import { cellKeyForCard } from './matchupKeys.js'
+import { GROUP_ORDER_MAP, GROUP_SORT_ORDER, getCardGroup } from './cardGrouping.js'
 
 function escapeCsvField(value) {
   const str = String(value ?? '')
@@ -16,37 +17,6 @@ function escapeCsvField(value) {
     return `"${str.replace(/"/g, '""')}"`
   }
   return str
-}
-
-const CARD_GROUP_CREATURES_PLANESWALKERS = 'Creatures & Planeswalkers'
-const CARD_GROUP_OTHER_SPELLS = 'Other Spells'
-const CARD_GROUP_LANDS = 'Lands'
-// Display/export order: Creatures & Planeswalkers, then Other Spells, then Lands
-const GROUP_SORT_ORDER = [
-  CARD_GROUP_CREATURES_PLANESWALKERS,
-  CARD_GROUP_OTHER_SPELLS,
-  CARD_GROUP_LANDS,
-]
-const GROUP_ORDER_MAP = Object.fromEntries(GROUP_SORT_ORDER.map((g, i) => [g, i]))
-
-function getCardGroup(typeLine) {
-  if (!typeLine || typeof typeLine !== 'string') return CARD_GROUP_OTHER_SPELLS
-  const lower = typeLine.toLowerCase()
-  if (lower.includes('land')) return CARD_GROUP_LANDS
-  if (lower.includes('creature') || lower.includes('planeswalker')) return CARD_GROUP_CREATURES_PLANESWALKERS
-  return CARD_GROUP_OTHER_SPELLS
-}
-
-const TYPE_SORT_ORDER = ['Land', 'Creature', 'Planeswalker', 'Artifact', 'Enchantment', 'Instant', 'Sorcery', 'Tribal']
-const TYPE_ORDER_MAP = Object.fromEntries(TYPE_SORT_ORDER.map((t, i) => [t, i]))
-
-function getTypeSortKey(typeLine) {
-  if (!typeLine || typeof typeLine !== 'string') return [TYPE_SORT_ORDER.length, '']
-  const mainPart = typeLine.split(/\s*[—\-]\s*/)[0].trim()
-  const types = mainPart ? mainPart.split(/\s+/) : []
-  const primary = types.find((t) => TYPE_ORDER_MAP[t] !== undefined) || types[0] || ''
-  const rank = TYPE_ORDER_MAP[primary] ?? TYPE_SORT_ORDER.length
-  return [rank, typeLine]
 }
 
 function sortCardsForExport(cards, cardTypes = {}) {
