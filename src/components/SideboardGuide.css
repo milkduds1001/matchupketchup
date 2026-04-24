@@ -418,7 +418,7 @@
     background: #fff !important;
     color: #111 !important;
     resize: none !important;
-    overflow: auto !important;
+    overflow: visible !important;
     border-radius: 3px;
   }
 
@@ -451,16 +451,37 @@
     background: transparent !important;
   }
 
-  .sideboard-guide-playdraw-table tbody td,
+  .sideboard-guide-playdraw-table tbody td {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+  }
+
   .sideboard-guide-playdraw-table tbody th[scope='row'] {
-    height: 0.84in !important;
-    min-height: 0.84in !important;
-    max-height: 0.84in !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     box-sizing: border-box !important;
   }
 
   .sideboard-guide-playdraw-table tbody th[scope='row'] {
     vertical-align: middle !important;
+  }
+
+  .sideboard-guide-playdraw-cell-inner {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    line-height: 1.35 !important;
+    font-size: 8.8pt !important;
+  }
+
+  .sideboard-guide-playdraw-cell-inner .sideboard-guide-list-outs li,
+  .sideboard-guide-playdraw-cell-inner .sideboard-guide-list-ins li {
+    margin: 0 0 0.05in 0 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   /* Let play/draw cells inherit scaled font from inline style on .sideboard-guide-playdraw-cell-inner */

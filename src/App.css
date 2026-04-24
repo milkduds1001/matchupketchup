@@ -2046,6 +2046,10 @@
   display: none;
 }
 
+.print-brand-banner {
+  display: none;
+}
+
 /*
  * Print jobs: matrix + sideboard PDFs; body gets print-mode-matrix | print-mode-sideboard.
  * @page size is set in JS (printPage.js) so matrix can use landscape.
@@ -2119,6 +2123,57 @@
 
   body:not(.print-mode-matrix) .matchup-print-banner {
     display: none !important;
+  }
+
+  body:where(.print-mode-matrix, .print-mode-sideboard) .print-brand-banner {
+    display: block !important;
+    margin: 0 0 0.16in 0;
+    padding: 0 0 0.08in 0;
+    border-bottom: 1px solid #b9b9b9;
+  }
+
+  body:where(.print-mode-matrix, .print-mode-sideboard) .print-brand-banner-top {
+    display: flex;
+    align-items: center;
+    gap: 0.12in;
+  }
+
+  body:where(.print-mode-matrix, .print-mode-sideboard) .print-brand-banner-logo {
+    width: 0.62in;
+    height: 0.62in;
+    object-fit: contain;
+    display: block;
+  }
+
+  body:where(.print-mode-matrix, .print-mode-sideboard) .print-brand-banner-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  body:where(.print-mode-matrix, .print-mode-sideboard) .print-brand-banner-name {
+    font-family: var(--font-display, 'Bebas Neue', sans-serif);
+    font-size: 22pt;
+    line-height: 1;
+    letter-spacing: 0.03em;
+    color: #111 !important;
+  }
+
+  body:where(.print-mode-matrix, .print-mode-sideboard) .print-brand-banner-tag {
+    font-family: var(--font-body, 'Inter', sans-serif);
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #333 !important;
+  }
+
+  body:where(.print-mode-matrix, .print-mode-sideboard) .print-brand-banner-meta {
+    margin-top: 0.04in;
+    font-family: var(--font-body, 'Inter', sans-serif);
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #222 !important;
   }
 
   body:not(.print-mode-matrix) .section.matchup-table {

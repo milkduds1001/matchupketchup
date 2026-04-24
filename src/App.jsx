@@ -1879,6 +1879,18 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
 
         {!manageView && pairSelected && (
           <>
+            <div className="print-brand-banner" aria-hidden="true">
+              <div className="print-brand-banner-top">
+                <img src={logo} alt="" className="print-brand-banner-logo" />
+                <div className="print-brand-banner-text">
+                  <span className="print-brand-banner-name">Matchup Ketchup</span>
+                  <span className="print-brand-banner-tag">Tournament Sideboard Guide</span>
+                </div>
+              </div>
+              <div className="print-brand-banner-meta">
+                {selectedDecklist?.name ?? '—'} vs. {selectedMetagame?.name ?? '—'}
+              </div>
+            </div>
             <section className="section matchup-table">
               <div className="matchup-print-banner">
                 {selectedDecklist?.name ?? '—'} vs. {selectedMetagame?.name ?? '—'}
