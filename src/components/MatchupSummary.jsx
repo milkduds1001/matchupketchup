@@ -1,3 +1,7 @@
+/**
+ * MatchupSummary — table view of every card ranked by a metagame-weighted
+ * sideboard score, plus quick "best 3 / worst 3" callouts.
+ */
 import './MatchupSummary.css'
 
 /**

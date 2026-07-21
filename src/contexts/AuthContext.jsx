@@ -1,9 +1,17 @@
+/**
+ * AuthProvider - the app's local ("fake") auth system: no backend, accounts
+ * and sessions are persisted to localStorage and used only to namespace each
+ * user's saved decks/matchups. login/signup/logout live here rather than in
+ * auth-context.js or useAuth.js so those files can stay component-free and
+ * hot-reload safely under React Fast Refresh (see auth-context.js).
+ */
 import { useState } from 'react'
 import { AuthContext } from './auth-context.js'
 
 const STORAGE_USERS = 'mtg-users'
 const STORAGE_CURRENT = 'mtg-current-user'
 
+/** Load the currently signed-in user from localStorage, validating its shape. */
 function readStoredUser() {
   try {
     const raw = localStorage.getItem(STORAGE_CURRENT)
@@ -19,6 +27,7 @@ function readStoredUser() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => readStoredUser())
 
+  /** Case-insensitive email match against stored accounts; sets the current user on success. */
   function login(email, password) {
     const users = getUsers()
     const found = users.find(
@@ -35,6 +44,7 @@ export function AuthProvider({ children }) {
     return {}
   }
 
+  /** Creates a new local account (id + normalized email) and signs it in. */
   function signup(email, password) {
     const trimmed = String(email).trim().toLowerCase()
     if (!trimmed || !password) return { error: 'Email and password are required' }
@@ -70,6 +80,7 @@ export function AuthProvider({ children }) {
   )
 }
 
+/** Read the full list of registered accounts (including passwords) from localStorage. */
 function getUsers() {
   try {
     const raw = localStorage.getItem(STORAGE_USERS)

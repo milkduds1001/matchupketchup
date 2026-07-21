@@ -1,12 +1,31 @@
+/**
+ * Fetches MTG Goldfish "metagame defaults" (archetype name + metagame %, per format, per
+ * 7/14/30-day window) and normalizes whatever shape comes back — from the live /api endpoint,
+ * a pre-built static JSON snapshot, or a partially-formed legacy payload — into one consistent
+ * shape the rest of the app can rely on.
+ *
+ * Relationship to the other two files in this trio: syncGoldfishDefaults.js calls
+ * fetchMetagameDefaults/getDefaultsForFormat here to pull a format's Goldfish snapshot and
+ * hands the result to storage.js's applyLockedGoldfishDefaults, which merges it into a user's
+ * metagame grid (the archetype list matchupKeys.js's keys are built against). This file only
+ * fetches/normalizes/reshapes Goldfish data — it never reads or writes user-edited grids.
+ */
+
 const SUPPORTED_FORMATS = new Set(['Standard', 'Pioneer', 'Modern', 'Legacy'])
 const SUPPORTED_WINDOWS = ['7', '14', '30']
 
+// ---------------------------------------------------------------------------
+// Archetype list normalization
+// ---------------------------------------------------------------------------
+
+/** Parses a percent value that may be a number, a numeric string, or `"NN%"`; clamps to 0–100. */
 function clampPercent(value) {
   const n = Number.parseFloat(String(value ?? '').replace('%', '').trim())
   if (Number.isNaN(n) || n < 0) return 0
   return Math.min(100, Number(n.toFixed(2)))
 }
 
+/** Coerces one raw archetype entry to `{ name, metagamePercent }`, or null if it has no name. */
 function normalizeArchetype(item) {
   const name = String(item?.name ?? '').trim()
   if (!name) return null
@@ -16,6 +35,7 @@ function normalizeArchetype(item) {
   }
 }
 
+/** Normalizes a format's archetype list: drops unnamed entries, dedupes by lowercased name (first occurrence wins), sorts by metagame % descending. */
 function normalizeFormatArchetypes(list) {
   if (!Array.isArray(list)) return []
   const out = []
@@ -31,6 +51,16 @@ function normalizeFormatArchetypes(list) {
   return out.sort((a, b) => b.metagamePercent - a.metagamePercent)
 }
 
+// ---------------------------------------------------------------------------
+// Full payload normalization
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalizes a raw defaults payload (from the API or a static snapshot) into a fixed shape:
+ * archetypes per SUPPORTED_FORMATS, further split into per-SUPPORTED_WINDOWS snapshots.
+ * Also backfills the 30-day snapshot from `raw.formats` for legacy payloads that predate the
+ * 7/14/30-day snapshot split and only ever had a single (implicitly 30-day) archetype list.
+ */
 export function normalizeMetagameDefaultsPayload(raw) {
   const formats = {}
   for (const formatName of SUPPORTED_FORMATS) {
@@ -71,20 +101,37 @@ export function normalizeMetagameDefaultsPayload(raw) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// URL helpers
+// ---------------------------------------------------------------------------
+
+/** Vite's `BASE_URL` with any trailing slash stripped, or '' at domain root — shared by both URL builders below so /api and the static snapshot both work when the app is hosted under a sub-path. */
+function getBaseRoot() {
+  const base = import.meta.env.BASE_URL || '/'
+  return base === '/' ? '' : base.replace(/\/$/, '')
+}
+
 /** Respects Vite `base` so /api works when the app is not hosted at domain root. */
 export function getMetagameDefaultsFetchUrl(queryString = '') {
-  const base = import.meta.env.BASE_URL || '/'
-  const root = base === '/' ? '' : base.replace(/\/$/, '')
   const q = queryString && !queryString.startsWith('?') ? `?${queryString}` : queryString
-  return `${root}/api/metagame-defaults${q}`
+  return `${getBaseRoot()}/api/metagame-defaults${q}`
 }
 
+/** URL of the pre-built static JSON snapshot committed for hosts with no serverless /api (see fetchStaticMetagameDefaultsSnapshot). */
 function getStaticMetagameDefaultsUrl() {
-  const base = import.meta.env.BASE_URL || '/'
-  const root = base === '/' ? '' : base.replace(/\/$/, '')
-  return `${root}/metagame-defaults.json`
+  return `${getBaseRoot()}/metagame-defaults.json`
 }
 
+// ---------------------------------------------------------------------------
+// Fetching, with static-snapshot fallback for hosts without a working /api
+// ---------------------------------------------------------------------------
+
+/**
+ * Fallback used when /api/metagame-defaults is unavailable (static-only hosting, network
+ * error, or a dev server not proxying /api yet): loads the static JSON file built at
+ * deploy/build time instead of a live scrape. Marks the result `fromStaticSnapshot` so the UI
+ * can indicate the data may be stale.
+ */
 async function fetchStaticMetagameDefaultsSnapshot() {
   const response = await fetch(getStaticMetagameDefaultsUrl(), {
     method: 'GET',
@@ -103,6 +150,12 @@ async function fetchStaticMetagameDefaultsSnapshot() {
   return normalizeMetagameDefaultsPayload({ ...raw, fromStaticSnapshot: true })
 }
 
+/**
+ * True when the /api response can't actually be the defaults API and we should retry against
+ * the static snapshot instead. Covers a plain 404, and the common static-hosting footgun where
+ * there's no serverless function at all and the host's SPA fallback rewrite serves index.html
+ * with a 200 status for any unmatched path (so `response.ok` alone isn't a reliable signal).
+ */
 function apiResponseNeedsStaticFallback(response, text) {
   if (response.status === 404) return true
   const ct = String(response.headers.get('content-type') || '').toLowerCase()
@@ -113,6 +166,12 @@ function apiResponseNeedsStaticFallback(response, text) {
   return false
 }
 
+/**
+ * Parses a successful-looking /api response body. Throws the sentinel message `'HTML_RESPONSE'`
+ * when the body is HTML despite a 2xx status (same SPA-rewrite case apiResponseNeedsStaticFallback
+ * guards against, but discovered only after content-type/body inspection here) — callers match on
+ * that exact message to decide whether to retry against the static snapshot.
+ */
 function parseMetagameDefaultsApiResponse(response, text) {
   const contentType = String(response.headers.get('content-type') || '').toLowerCase()
   if (!response.ok) {
@@ -144,6 +203,10 @@ function parseMetagameDefaultsApiResponse(response, text) {
 }
 
 /**
+ * Fetches the current metagame defaults, falling back to the static snapshot (see
+ * fetchStaticMetagameDefaultsSnapshot) in three places when `refresh` is false: on a network
+ * error, when apiResponseNeedsStaticFallback flags a static-hosting SPA rewrite, and when the
+ * body turns out to be HTML (the 'HTML_RESPONSE' sentinel from parseMetagameDefaultsApiResponse).
  * @param {{ refresh?: boolean }} [options]
  *   refresh — force a new scrape (skips server 24h memory cache); use for “Refresh MTG Goldfish”.
  *   On static-only hosts, refresh still calls the API; if missing, throws (snapshot cannot update in-browser).
@@ -201,6 +264,11 @@ export async function fetchMetagameDefaults(options = {}) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Per-format view
+// ---------------------------------------------------------------------------
+
+/** Reshapes a normalized (or raw — it re-normalizes) payload down to one format's archetypes plus its 7/14/30-day snapshots; falls back to 'Standard' for an unrecognized/missing formatName. */
 export function getDefaultsForFormat(payload, formatName) {
   const normalized = normalizeMetagameDefaultsPayload(payload)
   const key = SUPPORTED_FORMATS.has(String(formatName)) ? formatName : 'Standard'

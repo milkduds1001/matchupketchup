@@ -11,6 +11,10 @@
 import { cellKeyForCard } from './matchupKeys.js'
 import { GROUP_ORDER_MAP, GROUP_SORT_ORDER, getCardGroup } from './cardGrouping.js'
 
+/**
+ * Quote a single CSV field only if it needs it (contains a comma, quote, or
+ * newline), escaping embedded double quotes as "" per RFC 4180.
+ */
 function escapeCsvField(value) {
   const str = String(value ?? '')
   if (/[",\r\n]/.test(str)) {
@@ -19,6 +23,11 @@ function escapeCsvField(value) {
   return str
 }
 
+/**
+ * Order cards the same way they're grouped for display/print: by card group
+ * (creatures/planeswalkers, other spells, lands), then quantity descending,
+ * then name alphabetically.
+ */
 function sortCardsForExport(cards, cardTypes = {}) {
   return [...cards].sort((a, b) => {
     const typeA = cardTypes[a?.name]

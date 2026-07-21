@@ -1,3 +1,8 @@
+/**
+ * SideboardGuide — renders the printable "Step 5" guide: one block per
+ * matchup showing OUTS/INS on the play and on the draw, plus a free-text
+ * "keys to the matchup" field.
+ */
 import './SideboardGuide.css'
 import { buildOutsAndInsForArchetypeRole } from '../utils/matchupKeys.js'
 
@@ -6,6 +11,10 @@ const PLAYDRAW_FONT_BASE_REM = 0.9
 const PLAYDRAW_FONT_MIN_REM = 0.52
 const PLAYDRAW_FONT_PER_ENTRY = 0.034
 
+/**
+ * Scale the OUTS/INS font size down as the number of entries grows, so a
+ * long list still fits its printed table cell instead of overflowing.
+ */
 function playdrawFontRemForEntryCount(entryCount) {
   if (entryCount <= 0) return PLAYDRAW_FONT_BASE_REM
   return Math.max(
@@ -14,6 +23,7 @@ function playdrawFontRemForEntryCount(entryCount) {
   )
 }
 
+/** One OUTS/INS cell (either the play-side or draw-side half of a matchup row). */
 function OutsInsBlock({ outs, ins, hideLabels = false }) {
   const entryCount = outs.length + ins.length
   const fontRem = playdrawFontRemForEntryCount(entryCount)

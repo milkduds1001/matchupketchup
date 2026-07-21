@@ -1,6 +1,14 @@
 /**
- * localStorage helpers for the MTG Matchup Tool.
- * All functions handle missing or invalid data safely by returning fallbacks.
+ * localStorage-backed persistence for the MTG Matchup Tool.
+ *
+ * Two layers live here:
+ * - A legacy, global (non-user-scoped) API for a single deck's cards, archetypes,
+ *   matchup values, card-type cache, and "keys to the matchup" notes.
+ * - A per-user API (every function takes `userId`) for formats, decklists, metagames/
+ *   archetype grids, and per-deck matchup data — the storage used by the current app.
+ *
+ * All functions handle missing or invalid data safely by returning fallbacks; several
+ * also self-heal legacy/older-shaped data on read (see inline comments where relevant).
  */
 
 const STORAGE_KEYS = {
@@ -37,6 +45,8 @@ function setStored(key, value) {
     // Ignore storage errors
   }
 }
+
+// ---- Legacy global storage: cards, archetypes, matchup values, card types, keys-to-matchup ----
 
 function isNonEmptyArray(value) {
   return Array.isArray(value) && value.length > 0
@@ -172,7 +182,9 @@ export function buildDefaultMatchupValues(cards, archetypes) {
   return result
 }
 
-// --- User-scoped storage (decklists, metagames, matchup data per deck+metagame) ---
+// ---- User-scoped storage (formats, decklists, metagames, matchup data — keyed by userId) ----
+
+// ---- Formats ----
 
 export const DEFAULT_FORMATS = ['Standard', 'Pioneer', 'Modern', 'Legacy']
 
@@ -200,6 +212,9 @@ export function saveFormats(userId, formats) {
   setStored(formatsListKey(userId), list)
 }
 
+// Storage keys and key-builders shared by the decklists / metagames / matchup-data
+// sections below.
+
 function decklistsKey(userId) {
   return `mtg-decklists-${userId}`
 }
@@ -212,6 +227,7 @@ function matchupDataKey(userId) {
   return `mtg-matchup-data-${userId}`
 }
 
+/** Legacy pairing key (pre deck+format keying) — kept only for the backward-compat lookup in {@link getMatchupData}. */
 function pairKey(decklistId, metagameId) {
   return `${decklistId}_${metagameId}`
 }
@@ -223,12 +239,15 @@ function normalizeDeckPlanKeyPart(value) {
     .replace(/\s+/g, ' ')
 }
 
+/** Matchup-data key for a deck: `deck:<format>::<name>` (case/whitespace-insensitive). Returns '' if format or name is missing. */
 function deckPlanKey(deckInfo) {
   const format = normalizeDeckPlanKeyPart(deckInfo?.format)
   const name = normalizeDeckPlanKeyPart(deckInfo?.name)
   if (!format || !name) return ''
   return `deck:${format}::${name}`
 }
+
+// ---- Decklists ----
 
 export function getDecklists(userId) {
   if (!userId) return []
@@ -237,6 +256,7 @@ export function getDecklists(userId) {
   return raw.filter((d) => d && d.id && d.name && Array.isArray(d.cards))
 }
 
+/** Saves a decklist; silently reassigns `format` to the user's first allowed format if it isn't one of them. */
 export function saveDecklist(userId, decklist) {
   if (!userId || !decklist?.id || !decklist?.name || !Array.isArray(decklist.cards)) return
   const list = getDecklists(userId)
@@ -254,6 +274,8 @@ export function deleteDecklist(userId, id) {
   setStored(decklistsKey(userId), list)
 }
 
+// ---- Metagames ----
+
 export function getMetagames(userId) {
   if (!userId) return []
   const raw = getStored(metagamesKey(userId), null)
@@ -261,6 +283,7 @@ export function getMetagames(userId) {
   return raw.filter((m) => m && m.id && m.name && Array.isArray(m.archetypes))
 }
 
+/** Saves a metagame; silently reassigns `format` to the user's first allowed format if it isn't one of them. */
 export function saveMetagame(userId, metagame) {
   if (!userId || !metagame?.id || !metagame?.name || !Array.isArray(metagame.archetypes)) return
   const list = getMetagames(userId)
@@ -278,6 +301,14 @@ export function deleteMetagame(userId, id) {
   setStored(metagamesKey(userId), list)
 }
 
+// ---- Matchup data (per decklist + format) ----
+
+/**
+ * Loads {matchupValues, keysToMatchup} for a deck. Looks up by deck name+format first, then
+ * falls back to older key shapes (deckId+metagameId, then deckId-only) for data saved before
+ * that keying existed. Note: as a side effect, a legacy match found via fallback is rewritten
+ * under the current deck+format key so future reads skip the fallback chain.
+ */
 export function getMatchupData(userId, deckInfo, metagameId = '') {
   if (!userId || !deckInfo) {
     return { matchupValues: {}, keysToMatchup: {} }
@@ -328,7 +359,7 @@ export function saveMatchupData(userId, deckInfo, payload) {
   setStored(key, obj)
 }
 
-// --- Per-format metagame grid (rows = deck names, columns = metagame scenarios) ---
+// ---- Metagame grid (per format; rows = opponent archetypes, columns = metagame scenarios) ----
 
 /** Locked Goldfish window keys (7 / 14 / 30). Column labels are format-specific — use {@link goldfishLockedColumnLabel}. */
 export const GOLDFISH_LOCKED_WINDOWS = [
@@ -350,6 +381,11 @@ export function goldfishLockedColumnLabel(formatName, windowKey) {
   return `${fmt} · ${span} · Goldfish`
 }
 
+/**
+ * All known locked-column label variants (legacy static labels, plus the current-format and
+ * every default-format labels) — used to avoid re-adopting a locked Goldfish column as a
+ * "custom" one when migrating a grid's columns.
+ */
 function goldfishLabelsToExcludeFromCustomColumns(formatName) {
   const set = new Set(LEGACY_STATIC_GOLDFISH_LABELS)
   for (const fmt of DEFAULT_FORMATS) {
@@ -381,6 +417,7 @@ function mgUid() {
   return 'mg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9)
 }
 
+/** Deterministic row id derived from an archetype name (same name always yields the same id, unlike {@link mgUid}). */
 function stableRowIdFromName(name) {
   const s = String(name).trim()
   let h = 0
@@ -431,6 +468,12 @@ export function createDefaultMetagameGrid(format = 'Standard') {
   }
 }
 
+/**
+ * Migrates a grid's locked-column bookkeeping to the current 3-window (7/14/30) Goldfish
+ * schema — older grids stored a single locked (30-day) column. Also re-labels locked columns
+ * for the current format and re-trims custom columns. Returns the same object if nothing
+ * needed to change (used by {@link ensureMetagameGrid} to decide whether to persist).
+ */
 function ensureGoldfishMetadata(grid, formatName) {
   if (!isValidMetagameGrid(grid)) return grid
   const fmt =
@@ -517,6 +560,11 @@ function ensureGoldfishMetadata(grid, formatName) {
   return { ...grid, columns, cells, defaults }
 }
 
+/**
+ * Builds a grid for a format from the older per-metagame records (see {@link getMetagames}),
+ * for users who saved metagames before the grid editor existed. Falls back to
+ * {@link createDefaultMetagameGrid} if there are no legacy metagames for this format.
+ */
 function migrateLegacyMetagamesToGrid(userId, format) {
   const metas = getMetagames(userId).filter((m) => (m.format || '') === format)
   if (metas.length === 0) {
@@ -576,6 +624,7 @@ function migrateLegacyMetagamesToGrid(userId, format) {
   }
 }
 
+/** Normalizes a user-entered percent (strips a trailing '%', rounds) into a 0-100 integer. Contrast with {@link parsePctCell}, which keeps decimals for sorting. */
 function clampMetagamePercent(value) {
   const n = Number.parseFloat(String(value ?? '').replace(/%/g, '').trim())
   if (Number.isNaN(n) || n < 0) return 0
@@ -776,10 +825,12 @@ export function applyDefaultsToFirstMetagameColumn(grid, archetypes, firstColumn
   return { ...grid, columns, rows, cells }
 }
 
+/** First locked column id, or '' if none. Kept for callers that only care about one locked column; see {@link getLockedMetagameColumnIds} for the full (7/14/30) set. */
 export function getLockedMetagameColumnId(grid) {
   return getLockedMetagameColumnIds(grid)[0] || ''
 }
 
+/** Locked Goldfish column ids, falling back to the older single `lockedColumnId` field for grids saved before the 3-window schema. */
 export function getLockedMetagameColumnIds(grid) {
   const ids = Array.isArray(grid?.defaults?.lockedColumnIds) ? grid.defaults.lockedColumnIds : []
   if (ids.length > 0) return ids.map(String)
@@ -787,6 +838,7 @@ export function getLockedMetagameColumnIds(grid) {
   return fallback ? [fallback] : []
 }
 
+/** Whether a row is a locked (Goldfish-fed) row, e.g. to disable manual editing of its name/order in the UI. */
 export function isLockedMetagameRow(grid, rowId) {
   if (!rowId) return false
   const locked = Array.isArray(grid?.defaults?.lockedRowIds) ? grid.defaults.lockedRowIds : []

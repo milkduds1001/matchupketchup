@@ -1,3 +1,8 @@
+/**
+ * Shared card grouping used to bucket cards into display/export sections
+ * (Creatures & Planeswalkers, Other Spells, Lands) based on their type_line.
+ */
+
 export const CARD_GROUP_CREATURES_PLANESWALKERS = 'Creatures & Planeswalkers'
 export const CARD_GROUP_OTHER_SPELLS = 'Other Spells'
 export const CARD_GROUP_LANDS = 'Lands'

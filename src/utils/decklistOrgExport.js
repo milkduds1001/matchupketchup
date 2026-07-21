@@ -3,6 +3,11 @@
 const MAIN = 'main'
 const SIDEBOARD = 'sideboard'
 
+/**
+ * Sum quantities per card name within a single zone (main/sideboard),
+ * dropping invalid entries and zero/negative quantities, and return
+ * "<qty> <name>" lines sorted alphabetically (case-insensitive).
+ */
 function aggregateLines(cards, zone) {
   const map = new Map()
   for (const c of cards || []) {

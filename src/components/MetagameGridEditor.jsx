@@ -1,3 +1,21 @@
+/**
+ * MetagameGridEditor
+ *
+ * Editor for a single format's "metagame grid": rows are opponent deck archetypes, columns are
+ * metagame scenarios (each column mirrors a saved metagame record), and each cell is that
+ * archetype's percentage share within the scenario's column.
+ *
+ * Two data sources feed the grid:
+ * - User edits: row names, column labels, and cell percentages, typed in directly.
+ * - MTG Goldfish defaults: a snapshot of real-world metagame share (7/14/30-day windows) fetched
+ *   via metagameDefaults.js and merged into "locked" columns/rows (see storage.js's
+ *   applyLockedGoldfishDefaults) so the feed data displays read-only and can't be hand-edited.
+ *
+ * Persistence goes through storage.js: ensureMetagameGrid loads/migrates/creates the grid for
+ * (userId, format); saveMetagameGrid persists edits and re-syncs the per-column metagame records
+ * that other parts of the app (e.g. sideboard planning) read. onSynced is called after any load
+ * or save so the parent can refresh whatever it derives from those metagame records.
+ */
 import { useState, useEffect, useCallback } from 'react'
 import {
   ensureMetagameGrid,
@@ -9,6 +27,11 @@ import {
 import { fetchMetagameDefaults, getDefaultsForFormat } from '../utils/metagameDefaults.js'
 import './MetagameGridEditor.css'
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Short random id for a newly created row/column. */
 function mgUid() {
   return 'mg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9)
 }
@@ -21,6 +44,7 @@ function parseCellInt(raw) {
   return Math.max(0, Math.min(100, n))
 }
 
+/** Sum of a column's percentages excluding one row; used to cap that row's max allowed value so the column never exceeds 100%. */
 function sumColumnExcludingRow(grid, colId, excludeRowId) {
   let sum = 0
   for (const row of grid.rows) {
@@ -30,12 +54,20 @@ function sumColumnExcludingRow(grid, colId, excludeRowId) {
   return sum
 }
 
+/** Sum of a column's percentages across all rows; used for the "Other" row (100% minus this). */
 function columnSum(grid, colId) {
   let sum = 0
   for (const row of grid.rows) {
     sum += parseCellInt(grid.cells?.[row.id]?.[colId])
   }
   return sum
+}
+
+/** Which Goldfish window ('7' | '14' | '30') a locked column's label represents, inferred from its text. */
+function goldfishWindowKeyForLabel(label) {
+  if (label.includes('7')) return '7'
+  if (label.includes('14')) return '14'
+  return '30'
 }
 
 /** Status line after defaults load or refresh (warnings + static-snapshot hint). */
@@ -50,18 +82,24 @@ function formatDefaultsLoadedStatus(data) {
   return parts.join(' ').trim()
 }
 
-/**
- * MetagameGridEditor — rows are deck names, columns are metagame scenarios (each synced to a saved metagame).
- */
 export default function MetagameGridEditor({ userId, format, onSynced }) {
   const MAX_METAGAME_COLUMNS = 5
+
+  // ---- State ----
   const [grid, setGrid] = useState(null)
   const [saveStatus, setSaveStatus] = useState('')
   const [defaultsStatus, setDefaultsStatus] = useState('')
   const [defaultsLoadedFor, setDefaultsLoadedFor] = useState('')
   const [goldfishRefreshing, setGoldfishRefreshing] = useState(false)
+
+  // ---- Derived data ----
   const lockedColumnIds = getLockedMetagameColumnIds(grid || {})
 
+  // ---------------------------------------------------------------------------
+  // Grid load / persist
+  // ---------------------------------------------------------------------------
+
+  /** Load (or migrate/create) the grid whenever the user or format changes, then notify the parent. */
   useEffect(() => {
     if (!userId || !format) {
       setGrid(null)
@@ -73,6 +111,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, format])
 
+  /** Persist the grid, re-sync its columns to the app's metagame records, and flash a "Saved" status. */
   const persist = useCallback(
     (nextGrid) => {
       if (!userId || !format || !nextGrid) return
@@ -89,11 +128,23 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     persist(grid)
   }, [grid, persist])
 
+  // ---------------------------------------------------------------------------
+  // Goldfish defaults sync
+  // ---------------------------------------------------------------------------
+
+  /** Clear any stale Goldfish status message when the user/format changes, before the new format's defaults load. */
   useEffect(() => {
     setDefaultsStatus('')
     setDefaultsLoadedFor('')
   }, [userId, format])
 
+  /**
+   * Auto-load MTG Goldfish's (possibly cached) metagame defaults once per format — guarded by
+   * defaultsLoadedFor so it doesn't refetch on every grid edit — and merge them into the grid's
+   * locked columns via applyLockedGoldfishDefaults. Skips the save if the merge produced no
+   * change, to avoid an unnecessary write + re-render. This does not force a live refresh; see
+   * handleRefreshGoldfish for the user-triggered version.
+   */
   useEffect(() => {
     if (!userId || !format || !grid) return
     if (defaultsLoadedFor === format) return
@@ -131,6 +182,11 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     return () => { cancelled = true }
   }, [userId, format, grid, defaultsLoadedFor, onSynced])
 
+  /**
+   * User-triggered "Refresh MTG Goldfish" — forces a live refetch (bypassing any cache) and merges
+   * the result into the locked columns, same as the auto-load effect above but always saves
+   * (no unchanged-check) since the user explicitly asked to refresh.
+   */
   const handleRefreshGoldfish = useCallback(async () => {
     if (!userId || !format) return
     setGoldfishRefreshing(true)
@@ -166,6 +222,15 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     }
   }, [userId, format, onSynced])
 
+  // ---------------------------------------------------------------------------
+  // Cell / row / column edit handlers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Update one cell's percentage: clamps the typed value to 0-100, then further caps it so this
+   * column's row sum never exceeds 100% (using sumColumnExcludingRow for the other rows' total).
+   * No-ops for locked (Goldfish-managed) columns.
+   */
   const updateCell = useCallback((rowId, colId, rawValue) => {
     setGrid((prev) => {
       if (!prev) return prev
@@ -189,6 +254,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     })
   }, [])
 
+  /** Rename a deck row; no-ops for rows locked by Goldfish sync. */
   const updateRowName = useCallback((rowId, name) => {
     setGrid((prev) => {
       if (!prev) return prev
@@ -198,6 +264,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     })
   }, [])
 
+  /** Rename a metagame column; no-ops for columns locked by Goldfish sync. */
   const updateColLabel = useCallback((colId, label) => {
     setGrid((prev) => {
       if (!prev) return prev
@@ -207,6 +274,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     })
   }, [])
 
+  /** Append a new empty, editable metagame column (capped at MAX_METAGAME_COLUMNS). */
   const addColumn = useCallback(() => {
     setGrid((prev) => {
       if (!prev || prev.columns.length >= MAX_METAGAME_COLUMNS) return prev
@@ -220,6 +288,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     })
   }, [MAX_METAGAME_COLUMNS])
 
+  /** Remove a column and its cells; keeps at least one column and never removes a locked Goldfish column. */
   const removeColumn = useCallback((colId) => {
     setGrid((prev) => {
       if (!prev || prev.columns.length <= 1) return prev
@@ -235,6 +304,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     })
   }, [])
 
+  /** Append a new empty deck row plus matching empty cells for every column. */
   const addRow = useCallback(() => {
     setGrid((prev) => {
       if (!prev) return prev
@@ -247,6 +317,7 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
     })
   }, [])
 
+  /** Remove a row and its cells; keeps at least one row and never removes a row locked by Goldfish sync. */
   const removeRow = useCallback((rowId) => {
     setGrid((prev) => {
       if (!prev || prev.rows.length <= 1) return prev
@@ -257,6 +328,10 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
       return { ...prev, rows, cells }
     })
   }, [])
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   if (!grid) {
     return <p className="metagame-grid-loading">Loading metagame grid…</p>
@@ -290,24 +365,29 @@ export default function MetagameGridEditor({ userId, format, onSynced }) {
               {grid.columns.map((col) => (
                 <th key={col.id} className="metagame-grid-th-meta" scope="col">
                   {lockedColumnIds.includes(col.id) ? (
-                    <div className="metagame-grid-th-goldfish">
-                      <div className="metagame-grid-goldfish-title">MTG Goldfish</div>
-                      <div className="metagame-grid-goldfish-sub">
-                        {col.label.includes('7') ? 'Last 7 days' : col.label.includes('14') ? 'Last 14 days' : 'Last 30 days'}
-                      </div>
-                      <div className="metagame-grid-goldfish-updated">
-                        {(grid.defaults?.fetchedAtByWindow?.['7'] || grid.defaults?.fetchedAtByWindow?.['14'] || grid.defaults?.fetchedAtByWindow?.['30'] || grid.defaults?.fetchedAt)
-                          ? `Updated ${new Date(
-                            col.label.includes('7')
-                              ? (grid.defaults?.fetchedAtByWindow?.['7'] || grid.defaults?.fetchedAt)
-                              : col.label.includes('14')
-                                ? (grid.defaults?.fetchedAtByWindow?.['14'] || grid.defaults?.fetchedAt)
-                                : (grid.defaults?.fetchedAtByWindow?.['30'] || grid.defaults?.fetchedAt)
-                          ).toLocaleDateString()}`
-                          : 'Not loaded yet — use Refresh MTG Goldfish'}
-                      </div>
-                      <span className="metagame-grid-locked-badge metagame-grid-locked-badge--inline">Read-only</span>
-                    </div>
+                    (() => {
+                      const windowKey = goldfishWindowKeyForLabel(col.label)
+                      const windowLabel =
+                        windowKey === '7' ? 'Last 7 days' : windowKey === '14' ? 'Last 14 days' : 'Last 30 days'
+                      const fetchedAt = grid.defaults?.fetchedAtByWindow?.[windowKey] || grid.defaults?.fetchedAt
+                      const anyFetchedAt =
+                        grid.defaults?.fetchedAtByWindow?.['7'] ||
+                        grid.defaults?.fetchedAtByWindow?.['14'] ||
+                        grid.defaults?.fetchedAtByWindow?.['30'] ||
+                        grid.defaults?.fetchedAt
+                      return (
+                        <div className="metagame-grid-th-goldfish">
+                          <div className="metagame-grid-goldfish-title">MTG Goldfish</div>
+                          <div className="metagame-grid-goldfish-sub">{windowLabel}</div>
+                          <div className="metagame-grid-goldfish-updated">
+                            {anyFetchedAt
+                              ? `Updated ${new Date(fetchedAt).toLocaleDateString()}`
+                              : 'Not loaded yet — use Refresh MTG Goldfish'}
+                          </div>
+                          <span className="metagame-grid-locked-badge metagame-grid-locked-badge--inline">Read-only</span>
+                        </div>
+                      )
+                    })()
                   ) : (
                     <div className="metagame-grid-th-meta-inner">
                       <textarea

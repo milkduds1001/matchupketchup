@@ -2,6 +2,16 @@ import { useState, useId } from 'react'
 import './DeckUpload.css'
 
 /**
+ * DeckUpload - deck import UI.
+ *
+ * Lets the user choose a plain-text (.txt) decklist file, reads it in the browser,
+ * and parses it into a flat list of { id, name, quantity, zone } card entries
+ * (zone is "main" or "sideboard"). The parsed cards are handed to the parent via
+ * the onCardsParsed prop; this component does not talk to any backend or CSV
+ * export/import utility - all parsing here is plain-text decklist parsing.
+ */
+
+/**
  * Parses one line in the format "quantity card name".
  * Returns { quantity, name } or null if the line is invalid.
  * Blank or whitespace-only lines are ignored (return null).
@@ -61,6 +71,12 @@ function findSingleBlankSideboardStart(lines) {
   return -1
 }
 
+/**
+ * Parses one decklist line and, if it's a real card line, pushes a card entry onto `cards`
+ * (mutates the array in place). Lines that are blank or a bare "SIDEBOARD"/"SIDEBOARD:" marker
+ * are silently skipped (returns undefined). Returns { error } if the line looks like a card
+ * line but fails to parse (see parseLine), so callers can collect errors without aborting.
+ */
 function pushCardFromLine(cards, line, lineNumber, zone) {
   const trimmed = line.trim()
   if (trimmed === '') return

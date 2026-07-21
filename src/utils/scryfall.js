@@ -12,6 +12,11 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/** De-duplicate a list of card names and drop any blank/empty entries. */
+function uniqueNonEmptyNames(cardNames) {
+  return [...new Set(cardNames)].filter((n) => n && String(n).trim())
+}
+
 /**
  * Fetch a single card by exact name; returns type_line or null.
  * @param {string} cardName - Exact card name
@@ -29,7 +34,7 @@ export async function fetchCardByName(cardName) {
  * @param {number} delayMs - Delay between requests (default 100)
  */
 export async function fetchCardTypes(cardNames, onResult, delayMs = DELAY_MS) {
-  const names = [...new Set(cardNames)].filter((n) => n && String(n).trim())
+  const names = uniqueNonEmptyNames(cardNames)
   for (const name of names) {
     const data = await fetchCardByName(name)
     onResult(name, data ? data.type_line : null)
@@ -61,7 +66,7 @@ async function fetchCardJsonByExactName(cardName) {
  * `meta` is the Scryfall card object when found.
  */
 export async function fetchCardMetadata(cardNames, onResult, delayMs = DELAY_MS) {
-  const names = [...new Set(cardNames)].filter((n) => n && String(n).trim())
+  const names = uniqueNonEmptyNames(cardNames)
   for (const name of names) {
     const meta = await fetchCardJsonByExactName(name)
     onResult(name, meta)

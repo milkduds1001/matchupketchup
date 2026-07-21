@@ -1,3 +1,8 @@
+/**
+ * Toggles a page-size/orientation override for browser print (used for PDF
+ * export) by injecting a <style> tag with an @media print / @page rule.
+ */
+
 const STYLE_ID = 'dynamic-print-page'
 
 /**

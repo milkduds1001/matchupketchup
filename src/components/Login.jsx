@@ -3,6 +3,10 @@ import { useAuth } from '../contexts/useAuth.js'
 import logo from '../assets/matchupketchup_logo_mark.png'
 import './Login.css'
 
+/**
+ * Sign in / sign up form for the app's local (no real backend) auth system.
+ * Toggles between "login" and "signup" modes in place rather than routing.
+ */
 export default function Login({ onBack, onSuccess } = {}) {
   const { login, signup } = useAuth()
   const [mode, setMode] = useState('login') // 'login' | 'signup'
@@ -10,6 +14,7 @@ export default function Login({ onBack, onSuccess } = {}) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
+  /** Submit handler for both login and signup modes; delegates to the matching AuthContext method. */
   function handleSubmit(e) {
     e.preventDefault()
     setError('')

@@ -1,3 +1,20 @@
+// ---------------------------------------------------------------------------
+// MatchupTable
+//
+// Renders the sideboard matchup matrix (cards x archetypes, with an "on the
+// play" / "on the draw" sub-column per archetype) as a plain HTML <table>.
+//
+// This component exists specifically for print/PDF output: App.jsx mounts it
+// inside a `.matchup-matrix-print-only` wrapper (aria-hidden, hidden by CSS
+// except when `body.print-mode-matrix` is active — see App.css) so that
+// printing the matchup step yields a clean, paginated table instead of the
+// interactive board. The actual on-screen editing UI is its sibling
+// MatchupCardBoard.jsx, a drag/drop-capable board that this file intentionally
+// does not try to match pixel-for-pixel. Because it's rendered (just hidden)
+// during normal use, it still wires up the same handlers as the interactive
+// board (onChangeCell, hover/move/leave, keyboard grid navigation) so the
+// printed values and behavior stay in sync with the live board.
+// ---------------------------------------------------------------------------
 import React, { useRef, useLayoutEffect, useCallback, useMemo } from 'react'
 import './MatchupTable.css'
 import { cellKeyForCard } from '../utils/matchupKeys.js'
@@ -8,8 +25,14 @@ import {
   getCardGroup,
 } from '../utils/cardGrouping.js'
 
-// Sort by group first (Creatures & Planeswalkers > Other Spells > Lands),
-// then by descending quantity within the group, then alphabetically by name.
+// ---------------------------------------------------------------------------
+// Card sorting / grouping helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Sort by group first (Creatures & Planeswalkers > Other Spells > Lands),
+ * then by descending quantity within the group, then alphabetically by name.
+ */
 function sortCardsByGroupThenTypeThenQtyThenName(cardList, cardTypes = {}) {
   return [...cardList].sort((a, b) => {
     const typeA = cardTypes[a?.name]
@@ -26,7 +49,14 @@ function sortCardsByGroupThenTypeThenQtyThenName(cardList, cardTypes = {}) {
   })
 }
 
+// Feature flag: an extra "Type" / "Group" column pair kept in the markup for
+// future use (colgroup, colSpans, and thead already account for it) but
+// disabled for now — flip to true to re-enable those columns.
 const SHOW_TYPE_GROUP_COLUMNS = false
+
+// ---------------------------------------------------------------------------
+// Header/column layout helpers (sticky bands, archetype dividers, cell keys)
+// ---------------------------------------------------------------------------
 
 /** Alternating band per archetype master column (play + draw) in thead. */
 function archMasterStripClass(archIndex) {
@@ -39,6 +69,7 @@ function archDividerAfterClass(archIndex, totalArches) {
   return 'matchup-arch-divider-after'
 }
 
+/** Expand each archetype into its "play" and "draw" sub-columns, in display order. */
 function getColumnSlots(archetypes) {
   const slots = []
   for (const arch of archetypes) {
@@ -48,11 +79,20 @@ function getColumnSlots(archetypes) {
   return slots
 }
 
+/** Look up the stored in/out value for one card x archetype/play-or-draw cell. */
 function cellDisplayValue(values, card, slot) {
   const { arch, role } = slot
   return values[cellKeyForCard(card, arch.name, role)] ?? ''
 }
 
+/**
+ * Parse/clamp a raw cell input into the stored value format.
+ * Values are stored signed: main-deck cards use negative (cards leaving the
+ * deck), sideboard cards use positive (cards coming in). The zone flips the
+ * sign of whatever the user typed so they can always type a plain count.
+ * Returns null when the input isn't a usable number, or exceeds the card's
+ * quantity, so the caller can reject the edit.
+ */
 function normalizeCellValueByZone(raw, card) {
   const text = String(raw ?? '').trim()
   if (text === '') return ''
@@ -88,6 +128,12 @@ function MatchupTable({
   onCardMove,
   onCardLeave,
 }) {
+  // -------------------------------------------------------------------------
+  // Data derivation: split/sort cards into main-deck vs sideboard, filter and
+  // sort archetype columns.
+  // -------------------------------------------------------------------------
+
+  /** Skip archetypes explicitly pinned at 0% metagame share (blank/invalid % still shows). */
   function shouldRenderArchetype(arch) {
     const raw = arch?.metagamePercent
     if (raw === '' || raw == null) return true
@@ -117,6 +163,13 @@ function MatchupTable({
   const theadRowCount = 2
   const columnSlots = getColumnSlots(safeArchetypes)
 
+  // -------------------------------------------------------------------------
+  // Keyboard grid navigation: build the flat, visible-row order the arrow
+  // keys move through (main-deck groups in display order, then sideboard),
+  // then map card -> row index so cell inputs can look up their neighbors.
+  // -------------------------------------------------------------------------
+
+  /** Rows visible in the grid: same land-hiding rule used for rendering below. */
   const navigableCards = useMemo(() => {
     const rows = []
     const rowVisible = (card) => {
@@ -155,6 +208,7 @@ function MatchupTable({
     return m
   }, [navigableCards])
 
+  /** Registry of live cell <input> DOM nodes, keyed by "rowIndex,colIndex". */
   const cellRefMap = useRef(new Map())
   const setCellInputRef = useCallback((rowIndex, colIndex, el) => {
     const k = `${rowIndex},${colIndex}`
@@ -162,6 +216,7 @@ function MatchupTable({
     else cellRefMap.current.delete(k)
   }, [])
 
+  /** Focus a cell input by grid position and place the caret at start/end. */
   const focusCellInput = useCallback((rowIndex, colIndex, cursor = 'end') => {
     const el = cellRefMap.current.get(`${rowIndex},${colIndex}`)
     if (!el) return
@@ -171,6 +226,12 @@ function MatchupTable({
     else if (cursor === 'end') el.setSelectionRange(len, len)
   }, [])
 
+  /**
+   * Arrow-key navigation between cell inputs: up/down moves a row regardless
+   * of caret position; left/right moves a column only when the caret is
+   * already at that edge of the text (so normal text-caret movement inside a
+   * cell still works).
+   */
   function handleMatchupCellKeyDown(e, rowIndex, colIndex) {
     const nRows = navigableCards.length
     const nCols = columnSlots.length
@@ -212,6 +273,12 @@ function MatchupTable({
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Column totals: "Total in" / "Total out" tfoot rows, summed only over
+  // main-deck/sideboard cards actually shown (respects hideLands).
+  // -------------------------------------------------------------------------
+
+  /** Same land-hiding rule as navigableCards, applied when summing totals. */
   function cardRowVisible(card) {
     if (
       card.zone !== 'sideboard' &&
@@ -223,6 +290,7 @@ function MatchupTable({
     return true
   }
 
+  /** Per-column sum of positive (in) and negative (out) values across visible cards. */
   function totalsForVisibleCards(cardList) {
     return columnSlots.map((slot) => {
       let sumIn = 0
@@ -242,6 +310,7 @@ function MatchupTable({
 
   const mainTotalsBySlot = totalsForVisibleCards([...mainDeckCards, ...sideboardCards])
 
+  // Shared column/colSpan counts used by both the thead and the section rows below.
   const archCount = safeArchetypes.length
   const archColumnCount = columnSlots.length
   const sectionLabelColSpan = SHOW_TYPE_GROUP_COLUMNS ? 3 : 1
@@ -250,10 +319,19 @@ function MatchupTable({
   const displayCols = (SHOW_TYPE_GROUP_COLUMNS ? 4 : 2) + Math.max(1, archColumnCount)
   const totalsLabelColSpan = SHOW_TYPE_GROUP_COLUMNS ? 4 : 2
 
+  // -------------------------------------------------------------------------
+  // Sticky header/column geometry: the thead and the "MAIN DECK" section row
+  // stick to the top while scrolling, and their heights vary with content
+  // (archetype name wrapping, font size, etc). We measure the live DOM and
+  // publish the results as CSS custom properties so MatchupTable.css can
+  // offset the sticky rows/columns correctly instead of hardcoding heights.
+  // -------------------------------------------------------------------------
+
   const scrollRef = useRef(null)
   const theadRef = useRef(null)
   const sectionMainRowRef = useRef(null)
 
+  /** Measure thead row heights + the sticky "MAIN DECK" row and write them as CSS vars on the scroll wrapper. */
   const syncStickyLayoutVars = useCallback(() => {
     const wrap = scrollRef.current
     const thead = theadRef.current
@@ -295,6 +373,12 @@ function MatchupTable({
     }
   }, [syncStickyLayoutVars, safeArchetypes, archColumnCount])
 
+  // -------------------------------------------------------------------------
+  // JSX render helpers: thead cells (archetype names, play/draw sub-row) and
+  // the filler cells that keep section/group label rows aligned with the
+  // archetype columns below them.
+  // -------------------------------------------------------------------------
+
   /** One <td> per archetype play/draw column so gold dividers align with card rows (when type columns off). */
   function renderArchSpanFillCells(variant) {
     return columnSlots.map((slot, slotIndex) => {
@@ -320,6 +404,7 @@ function MatchupTable({
     })
   }
 
+  /** Archetype master header cell (colSpan 2, covers play+draw); wraps the name onto two lines at its first space. */
   function renderArchHeadCells() {
     return safeArchetypes.map((arch, archIndex) => {
       const name = arch.name || ''
@@ -349,6 +434,7 @@ function MatchupTable({
     })
   }
 
+  /** Second thead row: "Play" / "draw" labels under each archetype's master header cell. */
   function renderPlayDrawSubrow() {
     return (
       <tr className="matchup-thead-playdraw">
@@ -366,6 +452,12 @@ function MatchupTable({
     )
   }
 
+  /**
+   * One editable in/out <input> per archetype play/draw column for a card
+   * row. Wires up grid keyboard navigation (via rowIndexByCardKey) only when
+   * the row is part of the navigable set; otherwise renders a plain
+   * uncontrolled-nav input.
+   */
   function renderDataCells(card) {
     const rowIndex = rowIndexByCardKey.get(matchupNavRowKey(card))
     const gridNav = rowIndex !== undefined
@@ -419,6 +511,42 @@ function MatchupTable({
     })
   }
 
+  /**
+   * Leading, non-archetype cells shared by every card row (main-deck and
+   * sideboard alike): the hoverable card-name button, the quantity, and the
+   * optional type/group columns. Pulled out to avoid duplicating this block
+   * between the main-deck and sideboard row-mapping below.
+   */
+  function renderCardLeadCells(card) {
+    return (
+      <>
+        <td className="card-name matchup-sticky-col matchup-sticky-col--1">
+          <button
+            type="button"
+            className="matchup-card-preview-trigger"
+            onMouseEnter={(e) => onCardHover?.(card.name, e)}
+            onMouseMove={(e) => onCardMove?.(e)}
+            onFocus={(e) => {
+              const r = e.currentTarget.getBoundingClientRect()
+              onCardHover?.(card.name, { clientX: r.right + 8, clientY: r.top + 4 })
+            }}
+            onMouseLeave={() => onCardLeave?.()}
+            onBlur={() => onCardLeave?.()}
+          >
+            {card.name}
+          </button>
+        </td>
+        <td className="matchup-sticky-col matchup-sticky-col--2">{card.quantity}</td>
+        {SHOW_TYPE_GROUP_COLUMNS && (
+          <>
+            <td className="card-type">{cardTypes[card.name] ?? '—'}</td>
+            <td className="card-group">{getCardGroup(cardTypes[card.name])}</td>
+          </>
+        )}
+      </>
+    )
+  }
+
   if (safeArchetypes.length === 0) {
     return (
       <div className="matchup-table-scroll matchup-table-scroll--empty">
@@ -431,6 +559,12 @@ function MatchupTable({
       </div>
     )
   }
+
+  // -------------------------------------------------------------------------
+  // Table JSX: colgroup (sticky column widths + archetype banding), thead
+  // (archetype names + play/draw sub-row), tbody (MAIN DECK section, grouped
+  // card rows, SIDEBOARD section, sideboard card rows), tfoot (in/out totals).
+  // -------------------------------------------------------------------------
 
   return (
     <div ref={scrollRef} className="matchup-table-scroll">
@@ -499,29 +633,7 @@ function MatchupTable({
                 {!hideRowsForGroup &&
                   cardsInGroup.map((card) => (
                     <tr key={card.id ?? card.name}>
-                      <td className="card-name matchup-sticky-col matchup-sticky-col--1">
-                        <button
-                          type="button"
-                          className="matchup-card-preview-trigger"
-                          onMouseEnter={(e) => onCardHover?.(card.name, e)}
-                          onMouseMove={(e) => onCardMove?.(e)}
-                          onFocus={(e) => {
-                            const r = e.currentTarget.getBoundingClientRect()
-                            onCardHover?.(card.name, { clientX: r.right + 8, clientY: r.top + 4 })
-                          }}
-                          onMouseLeave={() => onCardLeave?.()}
-                          onBlur={() => onCardLeave?.()}
-                        >
-                          {card.name}
-                        </button>
-                      </td>
-                      <td className="matchup-sticky-col matchup-sticky-col--2">{card.quantity}</td>
-                      {SHOW_TYPE_GROUP_COLUMNS && (
-                        <>
-                          <td className="card-type">{cardTypes[card.name] ?? '—'}</td>
-                          <td className="card-group">{getCardGroup(cardTypes[card.name])}</td>
-                        </>
-                      )}
+                      {renderCardLeadCells(card)}
                       {renderDataCells(card)}
                     </tr>
                   ))}
@@ -543,29 +655,7 @@ function MatchupTable({
 
           {sideboardCards.map((card) => (
             <tr key={card.id ?? card.name} className="sideboard-row">
-              <td className="card-name matchup-sticky-col matchup-sticky-col--1">
-                <button
-                  type="button"
-                  className="matchup-card-preview-trigger"
-                  onMouseEnter={(e) => onCardHover?.(card.name, e)}
-                  onMouseMove={(e) => onCardMove?.(e)}
-                  onFocus={(e) => {
-                    const r = e.currentTarget.getBoundingClientRect()
-                    onCardHover?.(card.name, { clientX: r.right + 8, clientY: r.top + 4 })
-                  }}
-                  onMouseLeave={() => onCardLeave?.()}
-                  onBlur={() => onCardLeave?.()}
-                >
-                  {card.name}
-                </button>
-              </td>
-              <td className="matchup-sticky-col matchup-sticky-col--2">{card.quantity}</td>
-              {SHOW_TYPE_GROUP_COLUMNS && (
-                <>
-                  <td className="card-type">{cardTypes[card.name] ?? '—'}</td>
-                  <td className="card-group">{getCardGroup(cardTypes[card.name])}</td>
-                </>
-              )}
+              {renderCardLeadCells(card)}
               {renderDataCells(card)}
             </tr>
           ))}
