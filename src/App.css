@@ -1,4 +1,16 @@
-/* MatchupKetchup — tokens in theme.css */
+/*
+ * MatchupKetchup — styles for App.jsx (design tokens/colors live in theme.css).
+ * Rough map of this file, top to bottom:
+ *   - Header/nav + page shell (.app, .app-header*)
+ *   - Steps 1-3 selector cards (.top-choice-sections, .section-step, .crud-*)
+ *   - Shared buttons/inputs used across the whole app (.btn-*, .crud-*)
+ *   - "Manage" sub-views: formats / decklists table / deck editor / metagames
+ *   - Deck editor detail (card blocks, quantity adjusters, search results)
+ *   - Generic `.section` card chrome + Step 4/5 headings
+ *   - Step 4 matchup toolbar (formatting + export button groups)
+ *   - Confirmation <dialog> modals (reset matchup / clear notes)
+ *   - @media print rules for the matrix + sideboard-guide PDF exports
+ */
 .app {
   max-width: min(1920px, 96vw);
   margin: 0 auto;
@@ -83,6 +95,7 @@
   pointer-events: none;
 }
 
+/* Fallback UI rendered by DashboardErrorBoundary (App.jsx) when a render error is caught. */
 .dashboard-crash {
   margin: 1rem 0;
   padding: 1rem 1.25rem;
@@ -107,6 +120,7 @@
   flex-shrink: 0;
 }
 
+/* ---- Steps 1-3: format / decklist / metagame selector cards ---- */
 .top-controls {
   margin-bottom: 1.1rem;
 }
@@ -433,6 +447,7 @@
   padding: 0.5rem 0.75rem;
 }
 
+/* ---- "Manage" sub-views: formats / decklists table / deck editor / metagames ---- */
 .manage-view-content {
   max-width: 520px;
 }
@@ -982,6 +997,7 @@
   opacity: 0.65;
 }
 
+/* ---- Deck editor: name/format header, main-deck/sideboard card blocks, quantity adjusters, card search ---- */
 .deck-editor-panel {
   margin-top: 0.45rem;
   padding-top: 0.45rem;
@@ -1524,6 +1540,7 @@
   }
 }
 
+/* ---- Generic `.section` card chrome, shared by Steps 1-5 and manage views ---- */
 .section {
   background: var(--color-surface);
   border: 2px solid color-mix(in srgb, var(--color-border) 92%, var(--color-text) 8%);
@@ -1755,6 +1772,7 @@
   background: var(--color-surface);
 }
 
+/* ---- Confirmation modals: reset matchup values / clear Step 5 notes (rendered via native <dialog>) ---- */
 .matchup-reset-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -2182,6 +2200,10 @@
 
   body:not(.print-mode-sideboard) .sideboard-guide-section {
     display: none !important;
+  }
+
+  body.print-mode-matrix .matchup-matrix-print-only {
+    display: block !important;
   }
 
   .section.matchup-table {

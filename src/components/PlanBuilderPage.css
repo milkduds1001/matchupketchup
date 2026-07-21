@@ -1,0 +1,286 @@
+.plan-builder-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.plan-builder-page--empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  background: var(--color-surface, #efe6d3);
+  border: 1px dashed var(--color-border, #d6c7a8);
+  border-radius: var(--radius-lg, 14px);
+}
+
+.plan-builder-empty-msg {
+  margin: 0;
+  color: var(--color-text-muted, #5a5a5a);
+}
+
+/* ---- Toolbar: deck/matchup context, matchup dropdown, play/draw toggle, in/out totals ---- */
+
+.plan-builder-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem 1.5rem;
+  padding: 1rem 1.1rem;
+  background: var(--color-surface, #efe6d3);
+  border: 1px solid var(--color-border, #d6c7a8);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(43, 43, 43, 0.06));
+}
+
+.plan-builder-toolbar-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.plan-builder-toolbar-deck-name {
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+  color: var(--diner-blue, #2d6cdf);
+}
+
+.plan-builder-toolbar-meta-name {
+  font-size: 0.82rem;
+  color: var(--color-text-muted, #5a5a5a);
+}
+
+.plan-builder-toolbar-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #5a5a5a);
+}
+
+.plan-builder-role-toggle {
+  display: inline-flex;
+  align-self: flex-end;
+  border: 1px solid var(--color-border, #d6c7a8);
+  border-radius: var(--radius-md, 10px);
+  overflow: hidden;
+  background: var(--color-card, #e4d7bd);
+}
+
+.plan-builder-role-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--color-text, #2b2b2b);
+  cursor: pointer;
+}
+
+.plan-builder-role-btn + .plan-builder-role-btn {
+  border-left: 1px solid var(--color-border, #d6c7a8);
+}
+
+.plan-builder-role-btn--active {
+  background: var(--color-secondary-soft, #f4e2b8);
+  font-weight: 700;
+}
+
+.plan-builder-totals {
+  margin-left: auto;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  font-size: 0.92rem;
+}
+
+.plan-builder-total strong {
+  font-size: 1.05rem;
+}
+
+.plan-builder-total--out strong {
+  color: var(--color-primary, #c62828);
+}
+
+.plan-builder-total--in strong {
+  color: var(--status-success, #2e7d32);
+}
+
+/* ---- Columns: main deck (50%) | sideboard (25%) | in/out plan (25%, split top/bottom) ---- */
+
+.plan-builder-columns {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.plan-builder-col {
+  background: var(--color-surface, #efe6d3);
+  border: 1px solid var(--color-border, #d6c7a8);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(43, 43, 43, 0.06));
+  padding: 1rem;
+  min-height: 60vh;
+}
+
+.plan-builder-col--main {
+  overflow-x: auto;
+}
+
+.plan-builder-col--sideboard {
+  overflow-y: auto;
+}
+
+.plan-builder-col--plan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.plan-builder-col-title {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+
+/* ---- Main deck: mana-value sub-columns ---- */
+
+.plan-builder-mana-columns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(88px, 1fr);
+  gap: 0.5rem;
+}
+
+.plan-builder-mana-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 88px;
+  padding: 0.4rem 0.3rem 0.5rem;
+  border-radius: var(--radius-md, 10px);
+  background: color-mix(in srgb, var(--color-card, #e4d7bd) 55%, var(--color-surface, #efe6d3));
+  border: 1px dashed color-mix(in srgb, var(--color-border, #d6c7a8) 85%, transparent);
+}
+
+.plan-builder-mana-column--empty {
+  opacity: 0.7;
+}
+
+.plan-builder-mana-column-label {
+  text-align: center;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 0.92rem;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted, #5a5a5a);
+}
+
+.plan-builder-mana-column-stacks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---- Sideboard: single flowing list ---- */
+
+.plan-builder-sideboard-stacks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-start;
+}
+
+.plan-builder-empty-hint {
+  margin: 0;
+  padding: 1rem 0.5rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--color-text-muted, #5a5a5a);
+}
+
+/* ---- In/Out plan zones ---- */
+
+.plan-builder-plan-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+  border-radius: var(--radius-md, 10px);
+  border: 2px dashed color-mix(in srgb, var(--color-border, #d6c7a8) 90%, transparent);
+  background: color-mix(in srgb, var(--color-card, #e4d7bd) 45%, var(--color-surface, #efe6d3));
+  overflow: hidden;
+}
+
+.plan-builder-plan-zone--in {
+  border-color: color-mix(in srgb, var(--status-success, #2e7d32) 35%, var(--color-border, #d6c7a8));
+}
+
+.plan-builder-plan-zone--out {
+  border-color: color-mix(in srgb, var(--color-primary, #c62828) 35%, var(--color-border, #d6c7a8));
+}
+
+.plan-builder-plan-zone-title {
+  padding: 0.55rem 0.75rem 0.2rem;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  font-weight: 400;
+}
+
+.plan-builder-plan-zone--in .plan-builder-plan-zone-title {
+  color: var(--status-success, #2e7d32);
+}
+
+.plan-builder-plan-zone--out .plan-builder-plan-zone-title {
+  color: var(--color-primary, #c62828);
+}
+
+.plan-builder-plan-zone-body {
+  flex: 1;
+  padding: 0.25rem 0.6rem 0.6rem;
+  overflow: auto;
+}
+
+.plan-builder-plan-zone-empty {
+  margin: 0;
+  padding: 1rem 0.5rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #5a5a5a);
+}
+
+.plan-builder-plan-zone-stacks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+@media (max-width: 1100px) {
+  .plan-builder-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-builder-col {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .plan-builder-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .plan-builder-totals {
+    margin-left: 0;
+  }
+}

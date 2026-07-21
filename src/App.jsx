@@ -1,3 +1,23 @@
+/**
+ * App.jsx — top-level route switch (`App`) plus the entire authenticated
+ * experience (`Dashboard`).
+ *
+ * `App` just flips between the marketing HomePage, Login, TipJarPage, and the
+ * signed-in Dashboard based on a tiny bit of local UI state (`appPage`) — it
+ * is not a real router.
+ *
+ * `Dashboard` is the whole product: pick a format → pick/build a decklist →
+ * pick/build a metagame (opponent archetype grid) → fill in the matchup
+ * matrix (Step 4) → write sideboard-plan notes (Step 5) → print. It also owns
+ * the "manage" sub-views (formats / decklists / deck editor / metagames)
+ * reached via the header nav or the "Add or modify…" buttons next to each
+ * step. Everything is persisted to localStorage (see utils/storage.js),
+ * namespaced by the signed-in user's id — there is no backend database.
+ *
+ * NOTE: this file is intentionally one big component today. A future pass is
+ * expected to split Dashboard's manage-views and Step sections out into their
+ * own components — the section comments below mark where those seams are.
+ */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from './contexts/useAuth.js'
@@ -6,6 +26,8 @@ import HomePage from './components/HomePage.jsx'
 import TipJarPage from './components/TipJarPage.jsx'
 import DeckUpload from './components/DeckUpload.jsx'
 import MatchupTable from './components/MatchupTable.jsx'
+import MatchupCardBoard from './components/MatchupCardBoard.jsx'
+import PlanBuilderPage from './components/PlanBuilderPage.jsx'
 import SideboardGuide from './components/SideboardGuide.jsx'
 import MetagameGridEditor from './components/MetagameGridEditor.jsx'
 import {
@@ -31,11 +53,22 @@ import { fetchCardMetadata, fetchCardImageUrlByName, searchCardsByName } from '.
 import logo from './assets/matchupketchup_logo_mark.png'
 import './App.css'
 
+// ---------------------------------------------------------------------------
+// Constants & small pure helpers (formats, colors, deck card grouping)
+// ---------------------------------------------------------------------------
+
 const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G']
+/** Formats that currently have deck-legality checking implemented (60-card min, 15-card sideboard max, banned list, max-4 copies). */
 const LEGALITY_FORMATS = new Set(['standard', 'pioneer', 'modern', 'legacy'])
 /** Compare format strings case-insensitively (deck / metagame may differ in casing). */
 function formatsMatch(a, b) {
   return String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase()
+}
+
+/** Keep a selected-id React state value as-is if it still exists in `list`, otherwise clear it (e.g. the previously-selected metagame got deleted out from under the dropdown). */
+function keepIdIfPresent(prevId, list) {
+  if (!prevId) return prevId
+  return list.some((item) => item.id === prevId) ? prevId : null
 }
 
 function alphaCompare(a, b) {
@@ -75,6 +108,7 @@ const DECK_GROUP_ORDER = [
   DECK_GROUP_LANDS,
 ]
 
+/** Bucket a card's type line into one of the three deck-editor display groups. */
 function getDeckGroup(typeLine) {
   if (!typeLine || typeof typeLine !== 'string') return DECK_GROUP_OTHER_SPELLS
   const lower = typeLine.toLowerCase()
@@ -83,10 +117,16 @@ function getDeckGroup(typeLine) {
   return DECK_GROUP_OTHER_SPELLS
 }
 
+/** Local-only unique id for decklist cards; never sent anywhere, just needs to be stable for React keys and dedupe. */
 function generateId() {
   return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9)
 }
 
+/**
+ * Serializes a deck's editable fields into a normalized, order-independent
+ * string so the deck editor can detect "is this dirty vs. the last save"
+ * (see deckEditorIsDirty below) without a deep-equal library.
+ */
 function deckEditorSnapshot(name, format, cards) {
   const norm = (cards || []).map((c) => ({
     id: String(c?.id || ''),
@@ -108,6 +148,7 @@ function deckEditorSnapshot(name, format, cards) {
   })
 }
 
+/** Coerce a deck's raw card list (from storage, an import, or legacy data) into the well-formed shape the rest of the app relies on: trimmed name, positive integer quantity, and a known zone. */
 function normalizeDeckCards(list) {
   if (!Array.isArray(list)) return []
   return list
@@ -121,7 +162,14 @@ function normalizeDeckCards(list) {
     .filter((card) => card.name)
 }
 
-class DashboardErrorBoundary extends React.Component {
+/**
+ * Generic error boundary (must be a class — React has no hook equivalent of
+ * getDerivedStateFromError). Catches a render crash in `children` and shows
+ * `renderFallback(message, retry)` instead of a blank page. Parameterized by
+ * `onError`/`renderFallback` so the two boundaries below can share this
+ * implementation instead of duplicating the same lifecycle methods.
+ */
+class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
     this.state = { hasError: false, message: '' }
@@ -135,55 +183,62 @@ class DashboardErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('Dashboard render error:', error, info?.componentStack)
+    this.props.onError?.(error, info)
   }
 
   render() {
     if (this.state.hasError) {
-      return (
+      return this.props.renderFallback(this.state.message, () => this.setState({ hasError: false, message: '' }))
+    }
+    return this.props.children
+  }
+}
+
+/** Wraps the whole dashboard body; shown if any step/section crashes. */
+function DashboardErrorBoundary({ children }) {
+  return (
+    <ErrorBoundary
+      onError={(error, info) => console.error('Dashboard render error:', error, info?.componentStack)}
+      renderFallback={(message, retry) => (
         <div className="dashboard-crash" role="alert">
           <strong>Something went wrong in the app.</strong>
-          <p>{this.state.message || 'Unknown error'}</p>
-          <button type="button" className="btn-reset" onClick={() => this.setState({ hasError: false, message: '' })}>
+          <p>{message || 'Unknown error'}</p>
+          <button type="button" className="btn-reset" onClick={retry}>
             Try again
           </button>
         </div>
-      )
-    }
-    return this.props.children
-  }
+      )}
+    >
+      {children}
+    </ErrorBoundary>
+  )
 }
 
-class DeckEditorErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false, message: '' }
-  }
-
-  static getDerivedStateFromError(error) {
-    return {
-      hasError: true,
-      message: error instanceof Error ? error.message : String(error),
-    }
-  }
-
-  componentDidCatch(error) {
-    console.error('Deck editor crashed:', error)
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
+/** Narrower boundary around just the deck editor panel, so a crash there doesn't take down the rest of the dashboard. */
+function DeckEditorErrorBoundary({ children }) {
+  return (
+    <ErrorBoundary
+      onError={(error) => console.error('Deck editor crashed:', error)}
+      renderFallback={(message) => (
         <div className="deck-editor-crash">
-          <strong>Deck editor error:</strong> {this.state.message || 'Unknown runtime error'}
+          <strong>Deck editor error:</strong> {message || 'Unknown runtime error'}
         </div>
-      )
-    }
-    return this.props.children
-  }
+      )}
+    >
+      {children}
+    </ErrorBoundary>
+  )
 }
 
 function Dashboard({ onGoHome, onNavigateTipJar }) {
+  // -------------------------------------------------------------------------
+  // State
+  //
+  // Grouped loosely by what they drive: Step 1-3 selection, the deck editor,
+  // the Step 4 matchup matrix, card-metadata caches (fetched from Scryfall),
+  // and which "manage" sub-view is open. Nothing here is persisted directly —
+  // effects below sync it to/from localStorage via utils/storage.js.
+  // -------------------------------------------------------------------------
   const { user, logout } = useAuth()
   const [formats, setFormats] = useState(DEFAULT_FORMATS)
   const [decklists, setDecklists] = useState([])
@@ -195,6 +250,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   const [cardTypes, setCardTypes] = useState({})
   const [cardColorIdentities, setCardColorIdentities] = useState({})
   const [cardLegalities, setCardLegalities] = useState({})
+  const [cardManaValues, setCardManaValues] = useState({})
   const [matchupValues, setMatchupValues] = useState({})
   const [keysToMatchup, setKeysToMatchup] = useState({})
   const [hideLands, setHideLands] = useState(false)
@@ -227,17 +283,25 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   /** Avoid re-applying storage + setState every render (was causing matchup table flicker). */
   const matchupHydratedPairKeyRef = useRef('')
 
+  /** Re-read metagames from storage (e.g. after MetagameGridEditor saves changes) and drop the current selection if it no longer exists. */
   const refreshMetagames = useCallback(() => {
     if (!userId) return
     for (const f of getFormats(userId)) ensureMetagameGrid(userId, f)
     const list = getMetagames(userId)
     setMetagames(list)
-    setSelectedMetagameId((prev) => {
-      if (!prev) return prev
-      return list.some((m) => m.id === prev) ? prev : null
-    })
+    setSelectedMetagameId((prev) => keepIdIfPresent(prev, list))
   }, [userId])
 
+  // -------------------------------------------------------------------------
+  // Effects: initial hydration from localStorage + background Goldfish sync
+  // -------------------------------------------------------------------------
+
+  /**
+   * On login (or user switch): load this user's formats/decklists/metagames
+   * from storage, then kick off a background sync against MTG Goldfish's
+   * published metagame defaults (non-blocking — failures are swallowed since
+   * the app is fully usable offline / without that API).
+   */
   useEffect(() => {
     if (!userId) return
     let cancelled = false
@@ -249,10 +313,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     setDecklists(getDecklists(userId))
     const metaList = getMetagames(userId)
     setMetagames(metaList)
-    setSelectedMetagameId((prev) => {
-      if (!prev) return prev
-      return metaList.some((m) => m.id === prev) ? prev : null
-    })
+    setSelectedMetagameId((prev) => keepIdIfPresent(prev, metaList))
 
     ;(async () => {
       try {
@@ -264,16 +325,14 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
       for (const f of getFormats(userId)) ensureMetagameGrid(userId, f)
       const list = getMetagames(userId)
       setMetagames(list)
-      setSelectedMetagameId((prev) => {
-        if (!prev) return prev
-        return list.some((m) => m.id === prev) ? prev : null
-      })
+      setSelectedMetagameId((prev) => keepIdIfPresent(prev, list))
     })()
     return () => {
       cancelled = true
     }
   }, [userId])
 
+  // Native <dialog> open/close is imperative — mirror the boolean modal state onto it.
   useEffect(() => {
     const el = resetMatchupDialogRef.current
     if (!el) return
@@ -294,6 +353,13 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     }
   }, [clearNotesModalOpen])
 
+  // -------------------------------------------------------------------------
+  // One-time legacy-data migration: colorIdentities/cardLegalities were added
+  // to the deck schema after some decks already existed in storage. Any deck
+  // missing them gets backfilled from Scryfall in the background, once.
+  // -------------------------------------------------------------------------
+
+  /** Stable string key of which decks still need the backfill — recomputed only when decklists actually change, so the migration effect below doesn't re-run every render. */
   const deckMigrationSignature = useMemo(() => {
     return decklists
       .filter(
@@ -348,6 +414,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     return () => { cancelled = true }
   }, [userId, deckMigrationSignature, decklists])
 
+  /** If the format list changes (e.g. a format was removed), drop any selection that no longer points at a valid format. */
   useEffect(() => {
     if (!formats.includes(selectedFormat)) {
       setSelectedFormat('')
@@ -377,6 +444,11 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     }
   }, [userId, selectedDecklist?.format, refreshMetagames])
 
+  // -------------------------------------------------------------------------
+  // Derived data (memoized) — archetypes/decklists/cards recomputed from state
+  // -------------------------------------------------------------------------
+
+  /** Selected metagame's archetypes, cleaned up and sorted by metagame % (desc), name as tiebreaker. */
   const archetypes = useMemo(() => {
     const raw = selectedMetagame?.archetypes
     if (!Array.isArray(raw)) return []
@@ -441,6 +513,15 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     return COLOR_ORDER.filter((c) => colors.has(c))
   }
 
+  /**
+   * Checks a deck against basic tournament-legality rules for the formats we
+   * support (see LEGALITY_FORMATS): 60-card main-deck minimum, 15-card
+   * sideboard maximum, no banned/restricted cards, cards must be in that
+   * format's pool, and no more than 4 copies of a non-basic-land card.
+   * Returns `{ isRelevant, hasIssue, issues[] }` — `isRelevant` is false for
+   * formats we don't check (e.g. Commander), in which case the deck is never
+   * treated as illegal.
+   */
   function getDeckLegality(deck) {
     const format = String(deck?.format || '').toLowerCase()
     if (!LEGALITY_FORMATS.has(format)) {
@@ -529,6 +610,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     return { isRelevant: true, hasIssue: issues.length > 0, issues }
   }
 
+  /** Illegal decks sink to the bottom of the "Your Decks" table, alphabetical within each bucket. */
   function sortDecklistsByLegality(list) {
     return [...list].sort((a, b) => {
       const la = getDeckLegality(a)
@@ -574,6 +656,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     : decklists
   const sortedDecklistsForTable = sortDecklistsByLegality(decklistsFilteredForManage)
 
+  /** Deck editor card order: Creatures/Planeswalkers, then Other Spells, then Lands (see DECK_GROUP_ORDER), alphabetical within each group. */
   function sortDeckCardsForEditor(cardList) {
     return [...cardList].sort((a, b) => {
       const groupA = getDeckGroup(cardTypes[a?.name])
@@ -611,6 +694,10 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     ? [...metagames.filter((m) => formatsMatch(m.format, selectedDecklist.format))].sort((a, b) => alphaCompare(a?.name, b?.name))
     : []
 
+  // -------------------------------------------------------------------------
+  // Handlers — deck selection & CRUD
+  // -------------------------------------------------------------------------
+
   function clearDeckSelection() {
     setSelectedDecklistId(null)
     setCards([])
@@ -624,6 +711,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     setSelectedMetagameId(null)
   }
 
+  /** Select a decklist into Steps 2-4 (populates the deck editor state too). `allowIllegal` is used by the deck editor, which must be able to open an illegal deck in order to fix it. */
   function loadDecklist(id, options = {}) {
     const { allowIllegal = false } = options
     const list = decklists.find((d) => d.id === id)
@@ -652,6 +740,13 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     setSelectedMetagameId(id)
   }
 
+  // -------------------------------------------------------------------------
+  // Effects: keep Steps 1-3 selections consistent with each other. These
+  // guard against stale selections after the user changes format, edits a
+  // deck to become illegal, or deletes something out from under a dropdown.
+  // -------------------------------------------------------------------------
+
+  /** Format changed: drop a deck/metagame selection that no longer matches it. */
   useEffect(() => {
     if (!selectedFormat) {
       clearDeckSelection()
@@ -668,6 +763,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     }
   }, [selectedFormat, selectedDecklist, selectedMetagame])
 
+  /** If edits elsewhere made the selected deck illegal, bounce the selection back out of Steps 3-4 (except while actively fixing it in the deck editor). */
   useEffect(() => {
     if (!selectedDecklistId || !selectedDecklist) return
     // Deck editor must allow loading illegal decks to fix them; don't clear selection there.
@@ -679,6 +775,21 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     }
   }, [selectedDecklistId, selectedDecklist, decklists, manageView])
 
+  // -------------------------------------------------------------------------
+  // Effects: Step 4 matchup matrix — hydrate from storage, migrate legacy
+  // data, persist on change, and fetch card metadata for the current deck.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Load the saved matchup grid + notes for the current deck/metagame pair.
+   * Older saves stored one "unified" in/out value per card+archetype; newer
+   * data tracks separate values for on-the-play vs. on-the-draw, so every
+   * hydration (and every subsequent update) runs through
+   * migrateLegacyUnifiedToPlayDraw to upgrade old entries in place.
+   * `matchupHydratedPairKeyRef` guards against re-reading storage (and
+   * clobbering in-flight edits) on every render for the same pair — it only
+   * re-hydrates when the deck/format/name actually changes.
+   */
   useEffect(() => {
     if (!pairSelected || !userId) {
       matchupHydratedPairKeyRef.current = ''
@@ -701,6 +812,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     })
   }, [userId, selectedDecklist, selectedMetagameId, pairSelected, archetypes, safeCards])
 
+  /** Persist the current matchup grid + notes for the selected deck/metagame pair. */
   const saveMatchupDataForPair = useCallback(() => {
     if (!userId || !selectedDecklistId || !selectedMetagameId) return
     saveMatchupData(userId, selectedDecklist, {
@@ -714,10 +826,24 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     saveMatchupDataForPair()
   }, [pairSelected, saveMatchupDataForPair])
 
+  /**
+   * Fetch Scryfall metadata (type line, color identity, legalities, mana
+   * value) for any card in the current deck that's missing it, and merge
+   * results into the per-name caches below. Each setState does an
+   * equality/no-op check before writing so a completed fetch that changes
+   * nothing doesn't re-trigger this same effect (it depends on all four
+   * caches) in an infinite loop.
+   */
   useEffect(() => {
     if (safeCards.length === 0) return
     const names = [...new Set(safeCards.map((c) => c?.name).filter(Boolean))]
-    const toFetch = names.filter((name) => !cardTypes[name] || !cardColorIdentities[name] || !cardLegalities[name])
+    const toFetch = names.filter(
+      (name) =>
+        !cardTypes[name]
+        || !cardColorIdentities[name]
+        || !cardLegalities[name]
+        || cardManaValues[name] === undefined
+    )
     if (toFetch.length === 0) return
     let cancelled = false
     fetchCardMetadata(toFetch, (name, meta) => {
@@ -745,10 +871,21 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
         if (same) return prev
         return { ...prev, [name]: legalities }
       })
+      setCardManaValues((prev) => {
+        const cmc = typeof meta?.cmc === 'number' && !Number.isNaN(meta.cmc) ? meta.cmc : 0
+        if (prev[name] === cmc) return prev
+        return { ...prev, [name]: cmc }
+      })
     })
     return () => { cancelled = true }
-  }, [safeCards, cardTypes, cardColorIdentities, cardLegalities])
+  }, [safeCards, cardTypes, cardColorIdentities, cardLegalities, cardManaValues])
 
+  /**
+   * Capture a snapshot of the deck editor's fields to compare against for the
+   * "unsaved changes" (dirty) indicator. Snapshotting is deferred one frame so
+   * it captures state *after* loadDecklist/startCreateDeck have finished
+   * setting name/format/cards for the deck just opened, not the previous one.
+   */
   useEffect(() => {
     if (manageView !== 'deck-editor') {
       setDeckEditorNameEditing(false)
@@ -771,6 +908,18 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   /** Legality of the last saved deck (storage); updates after Save. Not live while editing. */
   const deckEditorLegalityDisplay = selectedDecklist ? getDeckLegality(selectedDecklist) : null
 
+  // -------------------------------------------------------------------------
+  // Handlers — Step 4 matchup matrix cells & Step 5 sideboard-plan notes
+  // -------------------------------------------------------------------------
+
+  /**
+   * `cardKey` is the composite key from matchupKeys.js encoding card +
+   * archetype + play/draw + zone — it alone is enough to update the right
+   * cell, so the `archetypeId` (really the archetype name) callers pass is
+   * accepted for symmetry with other handlers but unused here. An empty
+   * string clears a main-deck cell but is kept as an explicit `''` for
+   * sideboard cells (distinguishes "brought in 0" from "never touched").
+   */
   function handleMatchupChange(cardKey, archetypeId, rawValue) {
     if (!/^-?\d*$/.test(rawValue)) return
     setMatchupValues((prev) => {
@@ -783,6 +932,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     })
   }
 
+  /** Step 5's free-text "keys to this matchup" notes, keyed by archetype name (not id — notes are meant to survive a metagame being re-synced/rebuilt as long as the archetype name is unchanged). */
   function handleKeysToMatchupChange(archetypeName, text) {
     setKeysToMatchup((prev) => {
       const next = { ...prev }
@@ -792,6 +942,11 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     })
   }
 
+  // -------------------------------------------------------------------------
+  // Handlers — deck editor: save/delete, entry points, and card quantities
+  // -------------------------------------------------------------------------
+
+  /** Create-or-update the currently-open deck from the editor's live state. On first save of a brand-new deck, flips the editor from create/import mode into edit mode. */
   function handleSaveDecklist() {
     const name = deckName.trim()
     if (!name || !userId) return
@@ -855,6 +1010,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
       .filter((card) => (Number(card.quantity) || 0) > 0))
   }
 
+  /** Move exactly one copy of a card from main deck to sideboard, merging into an existing sideboard stack of the same name if present. Mirror of moveOneCopyToMain below. */
   function moveOneCopyToSideboard(cardId) {
     setCards((prev) => {
       const idx = prev.findIndex((c) => c.id === cardId)
@@ -883,6 +1039,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     })
   }
 
+  /** Mirror of moveOneCopyToSideboard above, sideboard → main. */
   function moveOneCopyToMain(cardId) {
     setCards((prev) => {
       const idx = prev.findIndex((c) => c.id === cardId)
@@ -910,6 +1067,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     })
   }
 
+  /** Add a card from the Scryfall search results (or +1 an existing stack of the same name/zone) to the deck being edited. */
   function addCardToDeck(name, zone) {
     const cardName = String(name || '').trim()
     if (!cardName) return
@@ -925,6 +1083,10 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     })
   }
 
+  // -------------------------------------------------------------------------
+  // Handlers — Scryfall card search & hover-preview (deck editor + Step 4)
+  // -------------------------------------------------------------------------
+
   async function handleDeckSearch() {
     const query = deckSearchQuery.trim()
     if (!query) {
@@ -937,6 +1099,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     setDeckSearchLoading(false)
   }
 
+  /** Fetch and cache a card's preview image the first time it's hovered; `undefined` means "not fetched yet", `null` means "fetched, no image available" — both are distinct from a real URL. */
   async function ensureDeckCardPreview(cardName) {
     const name = String(cardName || '').trim()
     if (!name) return
@@ -945,6 +1108,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     setDeckCardPreviewUrls((prev) => ({ ...prev, [name]: imageUrl }))
   }
 
+  /** Step 4's cursor-following card preview: track which card + where, then lazily fetch its image via ensureDeckCardPreview. */
   function handleMatchupCardHover(cardName, e) {
     const name = String(cardName || '').trim()
     if (!name) return
@@ -969,6 +1133,10 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     setActivePreviewCardName('')
     setMatchupPreviewPoint(null)
   }
+
+  // -------------------------------------------------------------------------
+  // Handlers — format management, print/export, and header nav
+  // -------------------------------------------------------------------------
 
   function handleAddFormat() {
     const name = newFormatName.trim()
@@ -995,6 +1163,16 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     if (manageMetaFormat === name) setManageMetaFormat(nextFormats[0] || DEFAULT_FORMATS[0])
   }
 
+  /**
+   * Print either the matchup matrix or the sideboard guide as its own themed
+   * page: toggle a `print-mode-<mode>` class (App.css scopes @media print
+   * rules to it) and setPrintPageLayout for the parts that need JS-driven
+   * layout, then trigger the browser print dialog. Cleanup runs on the
+   * `afterprint` event, but that event is unreliable across browsers, so a
+   * 2.5s timeout fallback removes the mode regardless. The double
+   * requestAnimationFrame gives the browser a chance to paint the print-mode
+   * class changes before `window.print()` captures the page.
+   */
   function runThemedPrint(mode) {
     if (nextPrintRequirement) {
       window.alert(`You cannot print yet. ${nextPrintRequirement}`)
@@ -1033,10 +1211,21 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  /**
+   * Experimental alternative to Step 4 (see PlanBuilderPage.jsx) — reuses whatever decklist +
+   * metagame are already selected via Steps 1-3; doesn't require its own selection step.
+   */
+  function goPlanBuilderNav() {
+    setManageView('plan-builder')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const navHomeActive = manageView == null || manageView === 'formats'
   const navDecklistsActive = manageView === 'decklists' || manageView === 'deck-editor'
   const navMetagamesActive = manageView === 'metagames'
+  const navPlanBuilderActive = manageView === 'plan-builder'
 
+  /** "Copy deck & open decklist.org" export button (Step 4 toolbar). */
   async function handleDecklistOrg() {
     if (nextPrintRequirement) {
       window.alert(`You cannot do this yet. ${nextPrintRequirement}`)
@@ -1055,6 +1244,21 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     }
   }
 
+  // ===========================================================================
+  // Render
+  //
+  // Layout: header/nav, then exactly one of —
+  //   - the Step 1-3 selector row (format / decklist / metagame), or
+  //   - a "manage" sub-view (formats | decklists | deck-editor | metagames), or
+  //   - Step 4 (matchup board) + Step 5 (sideboard guide), once a
+  //     decklist+metagame pair is selected and no manage view is open.
+  // Two confirmation <dialog>s (reset matchup values / clear notes) live at
+  // the bottom, portaled to the browser's native top layer.
+  //
+  // This is the part most in need of splitting into separate components in
+  // the upcoming refactor — each manage-view branch and each Step section is
+  // a natural extraction boundary.
+  // ===========================================================================
   return (
     <div className="app">
       <header className="app-header">
@@ -1086,6 +1290,14 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
           >
             Your metagames
           </button>
+          <button
+            type="button"
+            className={`app-header-nav-link${navPlanBuilderActive ? ' app-header-nav-link--active' : ''}`}
+            onClick={goPlanBuilderNav}
+            aria-current={navPlanBuilderActive ? 'page' : undefined}
+          >
+            Sideboard Builder
+          </button>
           <button type="button" className="app-header-nav-link" onClick={() => onNavigateTipJar?.()}>
             Tip Jar
           </button>
@@ -1106,6 +1318,32 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
       </header>
       <DashboardErrorBoundary>
       <main className="main-content">
+        {/*
+          Card-hover preview tooltip, portaled to the browser body so it always renders above
+          everything else. Shared by both Step 4 (MatchupCardBoard) and the Sideboard Builder
+          (PlanBuilderPage) — rendered here, once, so it isn't gated behind either view.
+        */}
+        {typeof document !== 'undefined' &&
+          matchupCursorPreviewStyle &&
+          activePreviewCardName &&
+          createPortal(
+            <div className="matchup-cursor-preview" style={matchupCursorPreviewStyle} role="tooltip">
+              <span className="matchup-cursor-preview-title">{activePreviewCardName}</span>
+              {deckCardPreviewUrls[activePreviewCardName] ? (
+                <img
+                  src={deckCardPreviewUrls[activePreviewCardName]}
+                  alt=""
+                  className="matchup-cursor-preview-image"
+                />
+              ) : deckCardPreviewUrls[activePreviewCardName] === null ? (
+                <span className="matchup-cursor-preview-fallback">No preview</span>
+              ) : (
+                <span className="matchup-cursor-preview-fallback">Loading…</span>
+              )}
+            </div>,
+            document.body
+          )}
+        {/* Steps 1-3: format / decklist / metagame pickers, shown when no manage view is open */}
         {!manageView && (
           <div className="top-controls">
             <div className="top-choice-sections">
@@ -1215,6 +1453,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
             </div>
           </div>
         )}
+        {/* Manage view: add/remove custom formats (defaults are permanent) */}
         {manageView === 'formats' && (
           <div className="manage-view">
             <div className="manage-view-header">
@@ -1261,6 +1500,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
             </div>
           </div>
         )}
+        {/* Manage view: "Your Decks" table (with legality column) + entry points into the deck editor */}
         {manageView === 'decklists' && (
           <div className="manage-view">
             <div className="manage-view-header">
@@ -1426,6 +1666,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
             </div>
           </div>
         )}
+        {/* Manage view: deck editor — name/format, live legality panel, main-deck/sideboard columns, card search */}
         {manageView === 'deck-editor' && (
           <div className="manage-view">
             <div className="manage-view-header manage-view-header-deck-editor">
@@ -1802,6 +2043,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
             </div>
           </div>
         )}
+        {/* Manage view: define/sync the metagame grid (delegates most of the work to MetagameGridEditor) */}
         {manageView === 'metagames' && (
           <div className="manage-view manage-view--metagames">
             <div className="manage-view-header">
@@ -1877,6 +2119,52 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
           </div>
         )}
 
+        {/*
+          Experimental alternative to Step 4 (see PlanBuilderPage.jsx). Reuses whatever
+          decklist + metagame are already selected via Steps 1-3 rather than asking again.
+        */}
+        {manageView === 'plan-builder' && (
+          <div className="manage-view">
+            <div className="manage-view-header">
+              <button type="button" className="btn-back" onClick={() => setManageView(null)}>
+                ← Back
+              </button>
+              <h2 className="manage-view-title">Sideboard Builder</h2>
+            </div>
+            <div className="manage-view-content manage-view-content-wide">
+              {pairSelected ? (
+                <PlanBuilderPage
+                  decklist={selectedDecklist}
+                  metagameName={selectedMetagame?.name}
+                  cards={safeCards}
+                  cardTypes={cardTypes}
+                  cardManaValues={cardManaValues}
+                  archetypes={archetypes}
+                  values={matchupValues}
+                  onChangeCell={handleMatchupChange}
+                  imageUrls={deckCardPreviewUrls}
+                  onEnsureImage={ensureDeckCardPreview}
+                  onCardHover={handleMatchupCardHover}
+                  onCardMove={handleMatchupCardMove}
+                  onCardLeave={handleMatchupCardLeave}
+                />
+              ) : (
+                <section className="section section-compact">
+                  <p className="placeholder">
+                    Select a format, decklist, and metagame first (Steps 1-3 on Home) to use the Sideboard Builder.
+                  </p>
+                </section>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/*
+          Step 4 (matchup board) + Step 5 (sideboard guide), once a decklist
+          and metagame are both selected. MatchupCardBoard is the interactive
+          on-screen editor; MatchupTable renders the same data again but only
+          for print (`.matchup-matrix-print-only`, hidden on screen via CSS).
+        */}
         {!manageView && pairSelected && (
           <>
             <div className="print-brand-banner" aria-hidden="true">
@@ -1899,7 +2187,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
                 <div className="matchup-step4-top">
                   <div className="matchup-step4-col matchup-step4-col--title">
                     <h2 className="step3-title">
-                      Step 4: Create Your Sideboard Plan
+                      Step 4: Build Your Sideboard Plan
                       <br />
                       <span className="step3-line-normal step3-line-deck-meta">
                         <span className="step3-deck-line">{selectedDecklist?.name}</span>
@@ -1968,37 +2256,33 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
                   </div>
                 </div>
               </div>
-              {typeof document !== 'undefined' &&
-                matchupCursorPreviewStyle &&
-                activePreviewCardName &&
-                createPortal(
-                  <div className="matchup-cursor-preview" style={matchupCursorPreviewStyle} role="tooltip">
-                    <span className="matchup-cursor-preview-title">{activePreviewCardName}</span>
-                    {deckCardPreviewUrls[activePreviewCardName] ? (
-                      <img
-                        src={deckCardPreviewUrls[activePreviewCardName]}
-                        alt=""
-                        className="matchup-cursor-preview-image"
-                      />
-                    ) : deckCardPreviewUrls[activePreviewCardName] === null ? (
-                      <span className="matchup-cursor-preview-fallback">No preview</span>
-                    ) : (
-                      <span className="matchup-cursor-preview-fallback">Loading…</span>
-                    )}
-                  </div>,
-                  document.body
-                )}
-              <MatchupTable
+              <MatchupCardBoard
                 cards={safeCards}
                 archetypes={displayedArchetypes}
                 values={matchupValues}
                 cardTypes={cardTypes}
+                cardManaValues={cardManaValues}
                 hideLands={hideLands}
+                imageUrls={deckCardPreviewUrls}
                 onChangeCell={handleMatchupChange}
+                onEnsureImage={ensureDeckCardPreview}
                 onCardHover={handleMatchupCardHover}
                 onCardMove={handleMatchupCardMove}
                 onCardLeave={handleMatchupCardLeave}
               />
+              <div className="matchup-matrix-print-only" aria-hidden="true">
+                <MatchupTable
+                  cards={safeCards}
+                  archetypes={displayedArchetypes}
+                  values={matchupValues}
+                  cardTypes={cardTypes}
+                  hideLands={hideLands}
+                  onChangeCell={handleMatchupChange}
+                  onCardHover={handleMatchupCardHover}
+                  onCardMove={handleMatchupCardMove}
+                  onCardLeave={handleMatchupCardLeave}
+                />
+              </div>
             </section>
 
             <section className="section sideboard-guide-section">
@@ -2114,6 +2398,11 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   )
 }
 
+/**
+ * Top-level page switch. `appPage` is plain useState, not a router — there
+ * are no URLs for these pages. Falls through to Login if the user tries to
+ * reach the dashboard while signed out, and to Dashboard once signed in.
+ */
 export default function App() {
   const { user } = useAuth()
   const [appPage, setAppPage] = useState('home')

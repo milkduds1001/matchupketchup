@@ -1,0 +1,96 @@
+.card-stack-entry {
+  --tile-width: 64px;
+  --tile-height: 90px;
+  --stack-offset-x: 5px;
+  --stack-offset-y: 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.15rem 0.55rem;
+}
+
+.card-stack-entry--compact {
+  --tile-width: 50px;
+  --tile-height: 70px;
+  --stack-offset-x: 4px;
+  --stack-offset-y: 5px;
+}
+
+.card-stack {
+  position: relative;
+  width: calc(var(--tile-width) + (var(--copy-count) - 1) * var(--stack-offset-x));
+  height: calc(var(--tile-height) + (var(--copy-count) - 1) * var(--stack-offset-y));
+}
+
+.card-stack-tile {
+  position: absolute;
+  top: calc(var(--copy-index) * var(--stack-offset-y));
+  left: calc(var(--copy-index) * var(--stack-offset-x));
+  z-index: calc(var(--copy-index) + 1);
+  width: var(--tile-width);
+  height: var(--tile-height);
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, #000 8%);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-card);
+  cursor: grab;
+  box-shadow:
+    0 1px 2px rgba(43, 43, 43, 0.18),
+    0 4px 10px rgba(43, 43, 43, 0.12);
+  transition: transform var(--transition-fast, 0.15s ease), box-shadow var(--transition-fast, 0.15s ease);
+}
+
+.card-stack-tile:active {
+  cursor: grabbing;
+}
+
+.card-stack-tile:hover,
+.card-stack-tile:focus-visible {
+  transform: translateY(-6px);
+  z-index: 999;
+  box-shadow: 0 6px 16px rgba(43, 43, 43, 0.3);
+}
+
+.card-stack-tile:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring, 0 0 0 3px rgba(105, 130, 155, 0.42)), 0 6px 16px rgba(43, 43, 43, 0.3);
+}
+
+.card-stack-tile--dragging {
+  opacity: 0.5;
+}
+
+.card-stack-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-stack-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #5a5a5a);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-card, #e4d7bd) 70%, #fff 30%),
+    var(--color-surface, #efe6d3)
+  );
+}
+
+.card-stack-name {
+  max-width: var(--tile-width);
+  font-size: 0.68rem;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--color-text, #2b2b2b);
+  overflow-wrap: anywhere;
+}
