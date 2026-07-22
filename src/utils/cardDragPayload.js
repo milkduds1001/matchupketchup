@@ -3,7 +3,10 @@
  * plan builder (PlanBuilderPage.jsx / CardStack.jsx). A payload records which panel a card tile
  * was dragged from (`source`) and which physical zone the card itself lives in (`zone`: main
  * deck vs. sideboard) — enough for a drop target to decide whether to accept it and which
- * adjustment to make (see matchupCardAdjust.js).
+ * adjustment to make (see matchupCardAdjust.js). A payload is either a single card copy
+ * (`buildDragPayload`) or a multi-card selection dragged together (`buildMultiDragPayload`, used
+ * when the dragged tile is part of an active shift-click/marquee selection) — drop handlers
+ * branch on the `multi` flag to tell them apart.
  *
  * Kept separate from the existing MatchupCardBoard.jsx / CardPile.jsx (which define their own,
  * near-identical local copies of this logic) so this new page doesn't need to touch that file.
@@ -18,6 +21,11 @@ export function buildDragPayload(source, card) {
     cardName: card?.name,
     zone: card?.zone === 'sideboard' ? 'sideboard' : 'main',
   }
+}
+
+/** Build the payload for dragging a whole multi-card selection at once. `items` is `[{ cardName, count }]` — every item shares the same source panel + zone since a selection never spans two panels. */
+export function buildMultiDragPayload(source, zone, items) {
+  return { source, zone, multi: true, items }
 }
 
 /** Attach a drag payload to a native HTML5 drag event. */

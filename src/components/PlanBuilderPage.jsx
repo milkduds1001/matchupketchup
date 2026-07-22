@@ -2,9 +2,14 @@
  * PlanBuilderPage.jsx — experimental, standalone sideboard-plan builder (see App.jsx's
  * "Sideboard Builder" nav link). An alternative layout/interaction over the same data as Step 4's
  * MatchupCardBoard.jsx: instead of mana-value "piles" collapsed to a single tile + quantity
- * badge, every physical copy of a card is its own draggable tile (CardStack.jsx), fanned out so
- * you can see exactly how many copies you have. Screen is split 50/25/25 — main deck (mana-value
- * columns) | sideboard | In/Out plan zones stacked top/bottom.
+ * badge, every physical copy of a card is its own large, individually selectable/draggable row
+ * (CardStack.jsx), stacked directly on top of each other. Screen is split 50/25/25 — main deck
+ * (mana-value columns) | sideboard | In/Out plan zones stacked top/bottom.
+ *
+ * Selection: click a row to move it instantly (one copy); shift/ctrl/cmd-click a row (or its
+ * checkbox) to add it to a multi-card selection instead, or drag a rubber-band box over a panel's
+ * background to select everything it touches (see SelectableSurface below). Dragging any selected
+ * row then moves the *whole* current selection together — see buildTileDragPayload.
  *
  * This reuses the exact same underlying matchup data (matchupCardAdjust.js + matchupKeys.js) as
  * MatchupCardBoard.jsx, so in/out choices made here show up there too, per archetype and
@@ -14,7 +19,8 @@
  * true. Local drag/drop helpers live in utils/cardDragPayload.js (a copy independent of
  * MatchupCardBoard.jsx/CardPile.jsx's own versions, so that file didn't need to change for this).
  */
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import CardStack from './CardStack.jsx'
 import './PlanBuilderPage.css'
 import {
@@ -30,10 +36,110 @@ import {
   getAvailableDeckCopies,
   getAvailableSideboardCopies,
 } from '../utils/matchupCardAdjust.js'
-import { buildDragPayload, parseDragPayload, findCardByNameZone } from '../utils/cardDragPayload.js'
+import {
+  buildDragPayload,
+  buildMultiDragPayload,
+  parseDragPayload,
+  findCardByNameZone,
+} from '../utils/cardDragPayload.js'
+
+// A drag shorter than this (px) is treated as a plain click on empty space (clears selection)
+// rather than an intentional marquee/rubber-band drag.
+const MARQUEE_DRAG_THRESHOLD = 4
+
+/**
+ * Wraps a panel's card rows so dragging over empty background draws a rubber-band selection box
+ * (portaled to document.body so it isn't clipped by the panel's own scroll/overflow) and selects
+ * every row it overlaps on mouseup. Clicking empty space without dragging clears the selection.
+ * Ignores mousedowns that start on a card row itself (`[data-card-name]`) so normal row
+ * click/drag behavior is untouched.
+ */
+function SelectableSurface({ panel, onSelectRect, onClearSelection, className, children }) {
+  const containerRef = useRef(null)
+  const [marquee, setMarquee] = useState(null)
+
+  function handleMouseDown(e) {
+    if (e.button !== 0 || e.target.closest('[data-card-name]')) return
+    const startX = e.clientX
+    const startY = e.clientY
+    let moved = false
+
+    function rectFrom(x, y) {
+      return {
+        left: Math.min(startX, x),
+        top: Math.min(startY, y),
+        width: Math.abs(x - startX),
+        height: Math.abs(y - startY),
+      }
+    }
+
+    function handleMove(ev) {
+      if (Math.abs(ev.clientX - startX) > MARQUEE_DRAG_THRESHOLD || Math.abs(ev.clientY - startY) > MARQUEE_DRAG_THRESHOLD) {
+        moved = true
+      }
+      setMarquee(rectFrom(ev.clientX, ev.clientY))
+    }
+
+    function handleUp(ev) {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+      setMarquee(null)
+      if (!moved) {
+        onClearSelection?.()
+        return
+      }
+      const finalRect = rectFrom(ev.clientX, ev.clientY)
+      const container = containerRef.current
+      if (!container) return
+      const keys = new Set()
+      container.querySelectorAll('[data-card-name]').forEach((node) => {
+        const r = node.getBoundingClientRect()
+        const overlaps =
+          r.left < finalRect.left + finalRect.width &&
+          r.left + r.width > finalRect.left &&
+          r.top < finalRect.top + finalRect.height &&
+          r.top + r.height > finalRect.top
+        if (!overlaps) return
+        keys.add(`${node.getAttribute('data-card-name')}::${node.getAttribute('data-tile-index')}`)
+      })
+      onSelectRect?.(panel, keys)
+    }
+
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+  }
+
+  return (
+    <div ref={containerRef} className={className} onMouseDown={handleMouseDown}>
+      {children}
+      {marquee &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="plan-builder-marquee"
+            style={{ left: marquee.left, top: marquee.top, width: marquee.width, height: marquee.height }}
+          />,
+          document.body
+        )}
+    </div>
+  )
+}
 
 /** One mana-value column of card stacks in the main-deck panel (e.g. all 2-drops). */
-function ManaColumnStacks({ columnKey, entries, imageUrls, onEnsureImage, onHover, onMove, onLeave, onActivateCard }) {
+function ManaColumnStacks({
+  columnKey,
+  entries,
+  cardManaValues,
+  imageUrls,
+  onEnsureImage,
+  onHover,
+  onMove,
+  onLeave,
+  onActivateCard,
+  isSelectedTile,
+  onToggleTile,
+  buildTileDragPayload,
+}) {
   return (
     <div className={`plan-builder-mana-column${entries.length === 0 ? ' plan-builder-mana-column--empty' : ''}`}>
       <div className="plan-builder-mana-column-label">{manaColumnLabel(columnKey)}</div>
@@ -43,9 +149,12 @@ function ManaColumnStacks({ columnKey, entries, imageUrls, onEnsureImage, onHove
             key={`${card.id ?? card.name}-${card.zone}`}
             cardName={card.name}
             quantity={available}
+            manaValue={cardManaValues?.[card.name]}
             imageUrl={imageUrls[card.name]}
             imageLoading={imageUrls[card.name] === undefined}
-            dragPayload={buildDragPayload('main-deck', card)}
+            isSelected={(i) => isSelectedTile(card.name, i)}
+            onToggleTile={(i) => onToggleTile(card.name, i)}
+            buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
             onActivate={() => onActivateCard?.(card)}
             onEnsureImage={onEnsureImage}
             onHover={onHover}
@@ -59,7 +168,19 @@ function ManaColumnStacks({ columnKey, entries, imageUrls, onEnsureImage, onHove
 }
 
 /** Sideboard panel: one flowing list (a quarter-width column has no room for 9 mana sub-columns), sorted by mana value then name. */
-function SideboardStacks({ entries, imageUrls, onEnsureImage, onHover, onMove, onLeave, onActivateCard }) {
+function SideboardStacks({
+  entries,
+  cardManaValues,
+  imageUrls,
+  onEnsureImage,
+  onHover,
+  onMove,
+  onLeave,
+  onActivateCard,
+  isSelectedTile,
+  onToggleTile,
+  buildTileDragPayload,
+}) {
   if (entries.length === 0) {
     return <p className="plan-builder-empty-hint">No sideboard cards available for this matchup.</p>
   }
@@ -70,9 +191,12 @@ function SideboardStacks({ entries, imageUrls, onEnsureImage, onHover, onMove, o
           key={`${card.id ?? card.name}-${card.zone}`}
           cardName={card.name}
           quantity={available}
+          manaValue={cardManaValues?.[card.name]}
           imageUrl={imageUrls[card.name]}
           imageLoading={imageUrls[card.name] === undefined}
-          dragPayload={buildDragPayload('sideboard', card)}
+          isSelected={(i) => isSelectedTile(card.name, i)}
+          onToggleTile={(i) => onToggleTile(card.name, i)}
+          buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
           onActivate={() => onActivateCard?.(card)}
           onEnsureImage={onEnsureImage}
           onHover={onHover}
@@ -90,6 +214,7 @@ function PlanZoneStacks({
   title,
   tone,
   entries,
+  cardManaValues,
   imageUrls,
   onEnsureImage,
   onHover,
@@ -99,6 +224,9 @@ function PlanZoneStacks({
   emptyText,
   onDragOver,
   onDrop,
+  isSelectedTile,
+  onToggleTile,
+  buildTileDragPayload,
 }) {
   return (
     <div className={`plan-builder-plan-zone plan-builder-plan-zone--${tone}`} onDragOver={onDragOver} onDrop={onDrop}>
@@ -113,9 +241,12 @@ function PlanZoneStacks({
                 key={`${card.id ?? card.name}-${card.zone}`}
                 cardName={card.name}
                 quantity={assigned}
+                manaValue={cardManaValues?.[card.name]}
                 imageUrl={imageUrls[card.name]}
                 imageLoading={imageUrls[card.name] === undefined}
-                dragPayload={buildDragPayload(tone === 'in' ? 'in-zone' : 'out-zone', card)}
+                isSelected={(i) => isSelectedTile(card.name, i)}
+                onToggleTile={(i) => onToggleTile(card.name, i)}
+                buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
                 onActivate={() => onActivateCard?.(card)}
                 onEnsureImage={onEnsureImage}
                 onHover={onHover}
@@ -161,6 +292,68 @@ export default function PlanBuilderPage({
     : safeArchetypes[0]?.name ?? ''
   const activeRole = selectedRole === 'draw' ? 'draw' : 'play'
 
+  // -------------------------------------------------------------------------
+  // Multi-card selection: which panel currently "owns" a selection, and the exact
+  // set of rendered rows (as `${cardName}::${tileIndex}` keys) selected within it.
+  // Never spans two panels at once — starting a selection in a different panel
+  // replaces the old one. Each row toggles independently (see toggleTile) so
+  // selecting is always "one at a time", regardless of which specific copy of a
+  // card is clicked — the tiles are visually identical/fungible anyway.
+  // -------------------------------------------------------------------------
+  const [selection, setSelection] = useState({ panel: null, keys: new Set() })
+
+  const isTileSelected = useCallback(
+    (panel, cardName, tileIndex) => selection.panel === panel && selection.keys.has(`${cardName}::${tileIndex}`),
+    [selection]
+  )
+
+  /** Shift/ctrl/cmd-click (or the row's checkbox): toggle exactly the one row clicked. */
+  const toggleTile = useCallback((panel, cardName, tileIndex) => {
+    setSelection((prev) => {
+      const sameOwner = prev.panel === panel
+      const keys = sameOwner ? new Set(prev.keys) : new Set()
+      const key = `${cardName}::${tileIndex}`
+      if (keys.has(key)) keys.delete(key)
+      else keys.add(key)
+      return { panel, keys }
+    })
+  }, [])
+
+  /** Rubber-band select: replace the selection with whatever the drawn box overlapped. */
+  const applyRectSelection = useCallback((panel, keys) => {
+    setSelection({ panel, keys })
+  }, [])
+
+  const clearSelection = useCallback(() => setSelection({ panel: null, keys: new Set() }), [])
+
+  const totalSelected = selection.panel ? selection.keys.size : 0
+
+  /** Aggregate the active selection's exact-row keys into `[{ cardName, count }]` for a multi-drag payload. */
+  function selectionCountsByCard() {
+    const counts = {}
+    for (const key of selection.keys) {
+      const cardName = key.slice(0, key.lastIndexOf('::'))
+      counts[cardName] = (counts[cardName] || 0) + 1
+    }
+    return Object.entries(counts).map(([cardName, count]) => ({ cardName, count }))
+  }
+
+  /**
+   * Drag payload for one tile: if this tile is part of the panel's active selection, drag the
+   * *whole* selection together; otherwise fall back to the plain single-card payload.
+   */
+  const buildTileDragPayload = useCallback(
+    (panel, zone, card, tileIndex) => {
+      if (isTileSelected(panel, card.name, tileIndex)) {
+        const items = selectionCountsByCard()
+        if (items.length > 0) return buildMultiDragPayload(panel, zone, items)
+      }
+      return buildDragPayload(panel, card)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selection, isTileSelected]
+  )
+
   // --- Derived data: split cards by zone, then bucket/sort for the three panels ---
   const mainCards = useMemo(() => (cards || []).filter((c) => c?.zone !== 'sideboard'), [cards])
   const sideboardCards = useMemo(() => (cards || []).filter((c) => c?.zone === 'sideboard'), [cards])
@@ -172,6 +365,17 @@ export default function PlanBuilderPage({
       adjustMatchupAssignment(card, activeArchName, activeRole, delta, values, onChangeCell)
     },
     [activeArchName, activeRole, values, onChangeCell]
+  )
+
+  /** Apply the same delta (scaled by each item's selected count) to every card in a multi-drag payload. */
+  const adjustMany = useCallback(
+    (items, zone, sign) => {
+      for (const item of items || []) {
+        const card = findCardByNameZone(cards, item.cardName, zone)
+        if (card && item.count > 0) adjust(card, sign * item.count)
+      }
+    },
+    [cards, adjust]
   )
 
   const mainColumnMap = useMemo(
@@ -215,7 +419,8 @@ export default function PlanBuilderPage({
   const totalIn = inEntries.reduce((sum, row) => sum + row.assigned, 0)
 
   // --- Drag-and-drop: Out accepts main-deck tiles, In accepts sideboard tiles; dropping a
-  // plan-zone tile back onto the main-deck or sideboard panel undoes that assignment. ---
+  // plan-zone tile back onto the main-deck or sideboard panel undoes that assignment. Each
+  // handler accepts either a single-card payload or a multi-card selection payload. ---
 
   function allowDrop(e) {
     e.preventDefault()
@@ -226,6 +431,11 @@ export default function PlanBuilderPage({
     e.preventDefault()
     const payload = parseDragPayload(e)
     if (!payload || payload.source === 'out-zone' || payload.zone !== 'main') return
+    if (payload.multi) {
+      adjustMany(payload.items, 'main', 1)
+      clearSelection()
+      return
+    }
     const card = findCardByNameZone(cards, payload.cardName, 'main')
     if (card) adjust(card, 1)
   }
@@ -234,6 +444,11 @@ export default function PlanBuilderPage({
     e.preventDefault()
     const payload = parseDragPayload(e)
     if (!payload || payload.source === 'in-zone' || payload.zone !== 'sideboard') return
+    if (payload.multi) {
+      adjustMany(payload.items, 'sideboard', 1)
+      clearSelection()
+      return
+    }
     const card = findCardByNameZone(cards, payload.cardName, 'sideboard')
     if (card) adjust(card, 1)
   }
@@ -242,6 +457,11 @@ export default function PlanBuilderPage({
     e.preventDefault()
     const payload = parseDragPayload(e)
     if (!payload || payload.source !== 'out-zone') return
+    if (payload.multi) {
+      adjustMany(payload.items, 'main', -1)
+      clearSelection()
+      return
+    }
     const card = findCardByNameZone(cards, payload.cardName, 'main')
     if (card) adjust(card, -1)
   }
@@ -250,6 +470,11 @@ export default function PlanBuilderPage({
     e.preventDefault()
     const payload = parseDragPayload(e)
     if (!payload || payload.source !== 'in-zone') return
+    if (payload.multi) {
+      adjustMany(payload.items, 'sideboard', -1)
+      clearSelection()
+      return
+    }
     const card = findCardByNameZone(cards, payload.cardName, 'sideboard')
     if (card) adjust(card, -1)
   }
@@ -300,6 +525,14 @@ export default function PlanBuilderPage({
             On the draw
           </button>
         </div>
+        {totalSelected > 0 && (
+          <div className="plan-builder-selection-status">
+            <span>{totalSelected} selected</span>
+            <button type="button" className="plan-builder-selection-clear" onClick={clearSelection}>
+              Clear
+            </button>
+          </div>
+        )}
         <div className="plan-builder-totals" aria-live="polite">
           <span className="plan-builder-total plan-builder-total--out">
             Out: <strong>{totalOut}</strong>
@@ -310,6 +543,11 @@ export default function PlanBuilderPage({
         </div>
       </div>
 
+      <p className="plan-builder-hint">
+        Click a card to move one copy. Shift-click (or its checkmark) to select several, or drag a box over empty
+        space to select a group — then drag any selected card to move them all together.
+      </p>
+
       <div className="plan-builder-columns">
         <section
           className="plan-builder-col plan-builder-col--main"
@@ -318,21 +556,30 @@ export default function PlanBuilderPage({
           onDrop={handleDropReturnToMain}
         >
           <h3 className="plan-builder-col-title">Main deck</h3>
-          <div className="plan-builder-mana-columns">
+          <SelectableSurface
+            panel="main-deck"
+            className="plan-builder-mana-columns"
+            onSelectRect={applyRectSelection}
+            onClearSelection={clearSelection}
+          >
             {MANA_COLUMN_ORDER.map((columnKey) => (
               <ManaColumnStacks
                 key={columnKey}
                 columnKey={columnKey}
                 entries={mainColumnMap.get(columnKey) || []}
+                cardManaValues={cardManaValues}
                 imageUrls={imageUrls}
                 onEnsureImage={onEnsureImage}
                 onHover={onCardHover}
                 onMove={onCardMove}
                 onLeave={onCardLeave}
                 onActivateCard={(card) => adjust(card, 1)}
+                isSelectedTile={(cardName, i) => isTileSelected('main-deck', cardName, i)}
+                onToggleTile={(cardName, i) => toggleTile('main-deck', cardName, i)}
+                buildTileDragPayload={(card, i) => buildTileDragPayload('main-deck', 'main', card, i)}
               />
             ))}
-          </div>
+          </SelectableSurface>
         </section>
 
         <section
@@ -342,46 +589,79 @@ export default function PlanBuilderPage({
           onDrop={handleDropReturnToSideboard}
         >
           <h3 className="plan-builder-col-title">Sideboard</h3>
-          <SideboardStacks
-            entries={sideboardEntries}
-            imageUrls={imageUrls}
-            onEnsureImage={onEnsureImage}
-            onHover={onCardHover}
-            onMove={onCardMove}
-            onLeave={onCardLeave}
-            onActivateCard={(card) => adjust(card, 1)}
-          />
+          <SelectableSurface
+            panel="sideboard"
+            className="plan-builder-sideboard-surface"
+            onSelectRect={applyRectSelection}
+            onClearSelection={clearSelection}
+          >
+            <SideboardStacks
+              entries={sideboardEntries}
+              cardManaValues={cardManaValues}
+              imageUrls={imageUrls}
+              onEnsureImage={onEnsureImage}
+              onHover={onCardHover}
+              onMove={onCardMove}
+              onLeave={onCardLeave}
+              onActivateCard={(card) => adjust(card, 1)}
+              isSelectedTile={(cardName, i) => isTileSelected('sideboard', cardName, i)}
+              onToggleTile={(cardName, i) => toggleTile('sideboard', cardName, i)}
+              buildTileDragPayload={(card, i) => buildTileDragPayload('sideboard', 'sideboard', card, i)}
+            />
+          </SelectableSurface>
         </section>
 
         <section className="plan-builder-col plan-builder-col--plan" aria-label="Sideboard plan">
-          <PlanZoneStacks
-            title="In"
-            tone="in"
-            entries={inEntries}
-            imageUrls={imageUrls}
-            onEnsureImage={onEnsureImage}
-            onHover={onCardHover}
-            onMove={onCardMove}
-            onLeave={onCardLeave}
-            onActivateCard={(card) => adjust(card, -1)}
-            emptyText="Drag sideboard cards here"
-            onDragOver={allowDrop}
-            onDrop={handleDropOnIn}
-          />
-          <PlanZoneStacks
-            title="Out"
-            tone="out"
-            entries={outEntries}
-            imageUrls={imageUrls}
-            onEnsureImage={onEnsureImage}
-            onHover={onCardHover}
-            onMove={onCardMove}
-            onLeave={onCardLeave}
-            onActivateCard={(card) => adjust(card, -1)}
-            emptyText="Drag main-deck cards here"
-            onDragOver={allowDrop}
-            onDrop={handleDropOnOut}
-          />
+          <SelectableSurface
+            panel="in-zone"
+            className="plan-builder-plan-zone-surface"
+            onSelectRect={applyRectSelection}
+            onClearSelection={clearSelection}
+          >
+            <PlanZoneStacks
+              title="In"
+              tone="in"
+              entries={inEntries}
+              cardManaValues={cardManaValues}
+              imageUrls={imageUrls}
+              onEnsureImage={onEnsureImage}
+              onHover={onCardHover}
+              onMove={onCardMove}
+              onLeave={onCardLeave}
+              onActivateCard={(card) => adjust(card, -1)}
+              emptyText="Drag sideboard cards here"
+              onDragOver={allowDrop}
+              onDrop={handleDropOnIn}
+              isSelectedTile={(cardName, i) => isTileSelected('in-zone', cardName, i)}
+              onToggleTile={(cardName, i) => toggleTile('in-zone', cardName, i)}
+              buildTileDragPayload={(card, i) => buildTileDragPayload('in-zone', 'sideboard', card, i)}
+            />
+          </SelectableSurface>
+          <SelectableSurface
+            panel="out-zone"
+            className="plan-builder-plan-zone-surface"
+            onSelectRect={applyRectSelection}
+            onClearSelection={clearSelection}
+          >
+            <PlanZoneStacks
+              title="Out"
+              tone="out"
+              entries={outEntries}
+              cardManaValues={cardManaValues}
+              imageUrls={imageUrls}
+              onEnsureImage={onEnsureImage}
+              onHover={onCardHover}
+              onMove={onCardMove}
+              onLeave={onCardLeave}
+              onActivateCard={(card) => adjust(card, -1)}
+              emptyText="Drag main-deck cards here"
+              onDragOver={allowDrop}
+              onDrop={handleDropOnOut}
+              isSelectedTile={(cardName, i) => isTileSelected('out-zone', cardName, i)}
+              onToggleTile={(cardName, i) => toggleTile('out-zone', cardName, i)}
+              buildTileDragPayload={(card, i) => buildTileDragPayload('out-zone', 'main', card, i)}
+            />
+          </SelectableSurface>
         </section>
       </div>
     </div>

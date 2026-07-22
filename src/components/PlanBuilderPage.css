@@ -110,6 +110,46 @@
   color: var(--status-success, #2e7d32);
 }
 
+.plan-builder-selection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary, #c62828) 14%, var(--color-surface, #efe6d3));
+  border: 1px solid color-mix(in srgb, var(--color-primary, #c62828) 35%, var(--color-border, #d6c7a8));
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-primary, #c62828);
+}
+
+.plan-builder-selection-clear {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  color: inherit;
+  cursor: pointer;
+}
+
+.plan-builder-hint {
+  margin: -0.5rem 0 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted, #5a5a5a);
+}
+
+/* Rubber-band selection box, portaled to document.body (position: fixed, viewport coords) */
+.plan-builder-marquee {
+  position: fixed;
+  z-index: 3000;
+  border: 1.5px solid var(--color-primary, #c62828);
+  background: color-mix(in srgb, var(--color-primary, #c62828) 12%, transparent);
+  pointer-events: none;
+}
+
 /* ---- Columns: main deck (50%) | sideboard (25%) | in/out plan (25%, split top/bottom) ---- */
 
 .plan-builder-columns {
@@ -129,11 +169,20 @@
 }
 
 .plan-builder-col--main {
+  display: flex;
+  flex-direction: column;
   overflow-x: auto;
 }
 
 .plan-builder-col--sideboard {
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
+}
+
+.plan-builder-sideboard-surface {
+  flex: 1;
+  min-height: 220px;
 }
 
 .plan-builder-col--plan {
@@ -156,16 +205,18 @@
 .plan-builder-mana-columns {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(88px, 1fr);
-  gap: 0.5rem;
+  grid-auto-columns: minmax(190px, 1fr);
+  gap: 0.6rem;
+  flex: 1;
+  align-content: start;
 }
 
 .plan-builder-mana-column {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  min-width: 88px;
-  padding: 0.4rem 0.3rem 0.5rem;
+  min-width: 190px;
+  padding: 0.5rem 0.45rem 0.6rem;
   border-radius: var(--radius-md, 10px);
   background: color-mix(in srgb, var(--color-card, #e4d7bd) 55%, var(--color-surface, #efe6d3));
   border: 1px dashed color-mix(in srgb, var(--color-border, #d6c7a8) 85%, transparent);
@@ -178,7 +229,7 @@
 .plan-builder-mana-column-label {
   text-align: center;
   font-family: var(--font-display, 'Bebas Neue', sans-serif);
-  font-size: 0.92rem;
+  font-size: 0.98rem;
   letter-spacing: 0.05em;
   color: var(--color-text-muted, #5a5a5a);
 }
@@ -186,17 +237,16 @@
 .plan-builder-mana-column-stacks {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: stretch;
+  gap: 0.55rem;
 }
 
 /* ---- Sideboard: single flowing list ---- */
 
 .plan-builder-sideboard-stacks {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.4rem;
-  justify-content: flex-start;
 }
 
 .plan-builder-empty-hint {
@@ -260,8 +310,15 @@
 
 .plan-builder-plan-zone-stacks {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.4rem;
+}
+
+.plan-builder-plan-zone-surface {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 1100px) {

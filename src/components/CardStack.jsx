@@ -1,10 +1,15 @@
 /**
- * CardStack.jsx — renders every available copy of one card as its own draggable tile, fanned
- * into a physical-looking stack, instead of one tile plus a numeric "x4" badge (see CardPile.jsx
- * for that older style, used by MatchupCardBoard.jsx). All tiles for a card are fungible — the
- * data model tracks only a quantity, not per-copy identity — so every tile shares the same drag
- * payload and click handler; interacting with any one of them adjusts the count by exactly one
- * copy. Used by PlanBuilderPage.jsx.
+ * CardStack.jsx — renders every available copy of one card as its own large, individually
+ * selectable/draggable row, stacked directly on top of each other (like a card catalog), instead
+ * of one tile plus a numeric "x4" badge (see the older CardPile.jsx, used by MatchupCardBoard.jsx).
+ *
+ * All tiles for a card are fungible — the data model tracks only a quantity, not per-copy
+ * identity — but selection is still tracked per rendered row (`isSelected(tileIndex)`), so each
+ * shift/ctrl-click (or the row's checkbox) toggles exactly the one row clicked, independent of
+ * any others already selected. Plain click keeps the original quick-move behavior (`onActivate`).
+ * Dragging delegates payload construction to the parent via `buildTileDragPayload`, since only
+ * the parent (PlanBuilderPage.jsx) knows about any active multi-card selection spanning other
+ * stacks in the same panel.
  */
 import './CardStack.css'
 
@@ -16,9 +21,11 @@ export default function CardStack({
   quantity,
   imageUrl,
   imageLoading = false,
-  draggable = true,
-  dragPayload,
+  manaValue,
+  isSelected,
+  onToggleTile,
   onActivate,
+  buildTileDragPayload,
   onEnsureImage,
   onHover,
   onMove,
@@ -29,30 +36,47 @@ export default function CardStack({
   const count = Math.min(MAX_RENDERED_COPIES, Math.max(0, Math.floor(Number(quantity) || 0)))
   if (!name || count <= 0) return null
 
-  function handleDragStart(e) {
-    if (!draggable || !dragPayload) return
-    e.dataTransfer.setData('application/x-matchupketchup-card', JSON.stringify(dragPayload))
-    e.dataTransfer.effectAllowed = 'move'
-    e.currentTarget.classList.add('card-stack-tile--dragging')
-  }
-
-  function handleDragEnd(e) {
-    e.currentTarget.classList.remove('card-stack-tile--dragging')
-  }
-
   return (
-    <div className={`card-stack-entry${compact ? ' card-stack-entry--compact' : ''}`}>
-      <div className="card-stack" style={{ '--copy-count': count }}>
-        {Array.from({ length: count }, (_, i) => (
-          <button
+    <div className={`card-row-stack${compact ? ' card-row-stack--compact' : ''}`}>
+      {Array.from({ length: count }, (_, i) => {
+        const selected = Boolean(isSelected?.(i))
+        return (
+          <div
             key={i}
-            type="button"
-            className="card-stack-tile"
-            style={{ '--copy-index': i }}
-            draggable={draggable && Boolean(dragPayload)}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onClick={() => onActivate?.()}
+            data-card-name={name}
+            data-tile-index={i}
+            className={`card-row${selected ? ' card-row--selected' : ''}`}
+            draggable
+            tabIndex={0}
+            role="button"
+            aria-pressed={selected}
+            aria-label={`${name}, copy ${i + 1} of ${count}`}
+            title={name}
+            onDragStart={(e) => {
+              const payload = buildTileDragPayload?.(i)
+              if (!payload) {
+                e.preventDefault()
+                return
+              }
+              e.dataTransfer.setData('application/x-matchupketchup-card', JSON.stringify(payload))
+              e.dataTransfer.effectAllowed = 'move'
+              e.currentTarget.classList.add('card-row--dragging')
+            }}
+            onDragEnd={(e) => e.currentTarget.classList.remove('card-row--dragging')}
+            onClick={(e) => {
+              if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                onToggleTile?.(i)
+                return
+              }
+              onActivate?.()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                if (e.shiftKey || e.ctrlKey || e.metaKey) onToggleTile?.(i)
+                else onActivate?.()
+              }
+            }}
             onMouseEnter={(e) => {
               onEnsureImage?.(name)
               onHover?.(name, e)
@@ -65,18 +89,28 @@ export default function CardStack({
             }}
             onMouseLeave={() => onLeave?.()}
             onBlur={() => onLeave?.()}
-            aria-label={`${name}, copy ${i + 1} of ${count}`}
-            title={name}
           >
+            <button
+              type="button"
+              className="card-row-check"
+              aria-label={selected ? `Deselect ${name}` : `Select ${name}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleTile?.(i)
+              }}
+            >
+              {selected ? '✓' : ''}
+            </button>
             {imageUrl ? (
-              <img src={imageUrl} alt="" className="card-stack-image" draggable={false} />
+              <img src={imageUrl} alt="" className="card-row-thumb" draggable={false} />
             ) : (
-              <span className="card-stack-fallback">{imageLoading ? '…' : name.slice(0, 1)}</span>
+              <span className="card-row-thumb card-row-thumb--fallback">{imageLoading ? '…' : name.slice(0, 1)}</span>
             )}
-          </button>
-        ))}
-      </div>
-      <div className="card-stack-name">{name}</div>
+            <span className="card-row-name">{name}</span>
+            {manaValue != null && <span className="card-row-mv">{manaValue}</span>}
+          </div>
+        )
+      })}
     </div>
   )
 }
