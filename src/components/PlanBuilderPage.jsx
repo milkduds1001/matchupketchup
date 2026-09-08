@@ -3,10 +3,13 @@
  * "Sideboard Builder" nav link). An alternative layout/interaction over the same data as Step 4's
  * MatchupCardBoard.jsx: instead of mana-value "piles" collapsed to a single tile + quantity
  * badge, every physical copy of a card is its own large, individually selectable/draggable row
- * (CardStack.jsx), stacked directly on top of each other. Layout: a fixed hover-preview panel on
- * the left, then Main deck (mana-value columns, with its "Out" flow zone below it) next to
- * Sideboard (with its "In" flow zone below it) — Out points right toward the sideboard it's
- * leaving to, In points left toward the main deck it's joining.
+ * (CardStack.jsx), stacked directly on top of each other. Layout is one full-width column stacked
+ * top to bottom: Main deck (one horizontal row per mana value, un-labeled — order alone conveys
+ * which is which) with a hover-preview panel alongside it, then an Out/In band (In on the left
+ * pointing up toward the deck it's joining, Out on the right pointing down toward the sideboard
+ * it's leaving to), then Sideboard as one more flowing row. Using full width for rows instead of
+ * mana-value columns (each needing its own vertical space) is what keeps the whole page on one
+ * screen without internal scrollbars.
  *
  * Selection: click a row to move it instantly (one copy); shift/ctrl/cmd-click a row (or its
  * checkbox) to add it to a multi-card selection instead, or drag a rubber-band box over a panel's
@@ -26,11 +29,8 @@ import { createPortal } from 'react-dom'
 import CardStack from './CardStack.jsx'
 import './PlanBuilderPage.css'
 import {
-  MANA_COLUMN_LANDS,
   MANA_COLUMN_ORDER,
-  MANA_COLUMN_UNKNOWN,
   buildManaColumnMap,
-  manaColumnLabel,
   sortCardsByManaThenName,
 } from '../utils/manaColumns.js'
 import {
@@ -144,50 +144,34 @@ function SelectableSurface({ panel, onSelectRect, onClearSelection, className, c
   )
 }
 
-/** One mana-value column of card stacks in the main-deck panel (e.g. all 2-drops). */
-function ManaColumnStacks({
-  columnKey,
-  entries,
-  imageUrls,
-  onEnsureImage,
-  onHover,
-  onActivateCard,
-  isSelectedTile,
-  onToggleTile,
-  buildTileDragPayload,
-}) {
-  const total = entries.reduce((sum, { available }) => sum + available, 0)
-  const label =
-    columnKey === MANA_COLUMN_LANDS || columnKey === MANA_COLUMN_UNKNOWN
-      ? manaColumnLabel(columnKey)
-      : `Mana Value ${manaColumnLabel(columnKey)}`
+/**
+ * One horizontal row of card stacks in the main-deck panel, all sharing one mana value (e.g. all
+ * 2-drops). Unlabeled — MANA_COLUMN_ORDER already puts rows in ascending mana-value order (lands,
+ * then any unresolved cards, last), so the sequence itself conveys what each row is.
+ */
+function ManaRowStacks({ entries, imageUrls, onEnsureImage, onHover, onActivateCard, isSelectedTile, onToggleTile, buildTileDragPayload }) {
   return (
-    <div className={`plan-builder-mana-column${entries.length === 0 ? ' plan-builder-mana-column--empty' : ''}`}>
-      <div className="plan-builder-mana-column-label">
-        {label} <span className="plan-builder-mana-column-count">({total})</span>
-      </div>
-      <div className="plan-builder-mana-column-stacks">
-        {entries.map(({ card, available }) => (
-          <CardStack
-            key={`${card.id ?? card.name}-${card.zone}`}
-            cardName={card.name}
-            quantity={available}
-            imageUrl={imageUrls[card.name]}
-            imageLoading={imageUrls[card.name] === undefined}
-            isSelected={(i) => isSelectedTile(card.name, i)}
-            onToggleTile={(i) => onToggleTile(card.name, i)}
-            buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
-            onActivate={() => onActivateCard?.(card)}
-            onEnsureImage={onEnsureImage}
-            onHover={onHover}
-          />
-        ))}
-      </div>
+    <div className="plan-builder-mana-row">
+      {entries.map(({ card, available }) => (
+        <CardStack
+          key={`${card.id ?? card.name}-${card.zone}`}
+          cardName={card.name}
+          quantity={available}
+          imageUrl={imageUrls[card.name]}
+          imageLoading={imageUrls[card.name] === undefined}
+          isSelected={(i) => isSelectedTile(card.name, i)}
+          onToggleTile={(i) => onToggleTile(card.name, i)}
+          buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
+          onActivate={() => onActivateCard?.(card)}
+          onEnsureImage={onEnsureImage}
+          onHover={onHover}
+        />
+      ))}
     </div>
   )
 }
 
-/** Sideboard panel: one flowing list (a quarter-width column has no room for 9 mana sub-columns), sorted by mana value then name. */
+/** Sideboard panel: one flowing row, sorted by mana value then name. */
 function SideboardStacks({
   entries,
   imageUrls,
@@ -223,14 +207,15 @@ function SideboardStacks({
 }
 
 /**
- * "Out" (under Main deck, cards leaving it) or "In" (under Sideboard, cards coming into it) zone.
- * Unlike the mana-value columns above, cards here sit side by side in a flowing row rather than
+ * "In" (cards coming into the main deck, pointing up toward it) or "Out" (cards leaving to the
+ * sideboard, pointing down toward it) zone, sitting side by side in a band between the two.
+ * Unlike the mana-value rows above, cards here sit side by side in a flowing row rather than
  * cascading down the page — order isn't tied to mana value, and only copies of the *same* card
  * overlap into their own little pile (CardStack's own internal cascade still applies).
  */
 function FlowZoneStacks({
   label,
-  arrowSide,
+  arrow,
   tone,
   count,
   entries,
@@ -251,14 +236,9 @@ function FlowZoneStacks({
   return (
     <div className={`plan-builder-flow-zone plan-builder-flow-zone--${tone}`} onDragOver={onDragOver} onDrop={onDrop}>
       <div className="plan-builder-flow-zone-title">
-        {arrowSide === 'left' && (
-          <span className="plan-builder-flow-arrow" aria-hidden="true">←</span>
-        )}
+        <span className="plan-builder-flow-arrow" aria-hidden="true">{arrow}</span>
         <span>{label}</span>
         <span className="plan-builder-flow-count">({count})</span>
-        {arrowSide === 'right' && (
-          <span className="plan-builder-flow-arrow" aria-hidden="true">→</span>
-        )}
       </div>
       <div className="plan-builder-flow-zone-body">
         {entries.length === 0 ? (
@@ -464,12 +444,8 @@ export default function PlanBuilderPage({
     e.dataTransfer.dropEffect = 'move'
   }
 
-  // Out/In are now nested inside the main-deck/sideboard section (see render), whose own onDrop
-  // (handleDropReturnToMain/ToSideboard) would otherwise also fire for the same drop as it
-  // bubbles — stopPropagation keeps "assign" and "return" from both firing on one drop.
   function handleDropOnOut(e) {
     e.preventDefault()
-    e.stopPropagation()
     const payload = parseDragPayload(e)
     if (!payload || payload.source === 'out-zone' || payload.zone !== 'main') return
     if (payload.multi) {
@@ -483,7 +459,6 @@ export default function PlanBuilderPage({
 
   function handleDropOnIn(e) {
     e.preventDefault()
-    e.stopPropagation()
     const payload = parseDragPayload(e)
     if (!payload || payload.source === 'in-zone' || payload.zone !== 'sideboard') return
     if (payload.multi) {
@@ -590,17 +565,17 @@ export default function PlanBuilderPage({
         space to select a group — then drag any selected card to move them all together.
       </p>
 
-      <div className="plan-builder-columns">
-        <section
-          className="plan-builder-col plan-builder-col--main"
-          aria-label="Main deck"
-          onDragOver={allowDrop}
-          onDrop={handleDropReturnToMain}
-        >
-          <h3 className="plan-builder-col-title">Main deck</h3>
+      <section
+        className="plan-builder-col plan-builder-col--main"
+        aria-label="Main deck"
+        onDragOver={allowDrop}
+        onDrop={handleDropReturnToMain}
+      >
+        <h3 className="plan-builder-col-title">Main deck</h3>
+        <div className="plan-builder-main-body">
           <SelectableSurface
             panel="main-deck"
-            className="plan-builder-mana-columns"
+            className="plan-builder-mana-rows"
             onSelectRect={applyRectSelection}
             onClearSelection={clearSelection}
           >
@@ -608,9 +583,8 @@ export default function PlanBuilderPage({
               const entries = mainColumnMap.get(columnKey) || []
               if (entries.length === 0) return null
               return (
-                <ManaColumnStacks
+                <ManaRowStacks
                   key={columnKey}
-                  columnKey={columnKey}
                   entries={entries}
                   imageUrls={imageUrls}
                   onEnsureImage={onEnsureImage}
@@ -624,103 +598,104 @@ export default function PlanBuilderPage({
             })}
           </SelectableSurface>
 
-          <FlowZoneStacks
-            label="Out"
-            arrowSide="right"
-            tone="out"
-            count={totalOut}
-            entries={outEntries}
-            imageUrls={imageUrls}
-            onEnsureImage={onEnsureImage}
-            onHover={handleCardPreview}
-            onActivateCard={(card) => adjust(card, -1)}
-            emptyText="Drag main-deck cards here"
-            onDragOver={allowDrop}
-            onDrop={handleDropOnOut}
-            panel="out-zone"
-            onSelectRect={applyRectSelection}
-            onClearSelection={clearSelection}
-            isSelectedTile={(cardName, i) => isTileSelected('out-zone', cardName, i)}
-            onToggleTile={(cardName, i) => toggleTile('out-zone', cardName, i)}
-            buildTileDragPayload={(card, i) => buildTileDragPayload('out-zone', 'main', card, i)}
-          />
-        </section>
+          {/* Runs alongside the deck rows (not floating) so it can't land on top of the Out/In
+              band or the sideboard below — see the layout note in the module doc comment. */}
+          <aside className="plan-builder-preview-panel" aria-label="Hovered card preview">
+            {previewCardName ? (
+              <>
+                <div className="plan-builder-preview-name">{previewCardName}</div>
+                {cardTypes[previewCardName] && (
+                  <div className="plan-builder-preview-type">{cardTypes[previewCardName]}</div>
+                )}
+                {imageUrls[previewCardName] ? (
+                  <img
+                    src={imageUrls[previewCardName]}
+                    alt={previewCardName}
+                    className="plan-builder-preview-image"
+                  />
+                ) : imageUrls[previewCardName] === null ? (
+                  <div className="plan-builder-preview-image plan-builder-preview-image--fallback">
+                    No preview available
+                  </div>
+                ) : (
+                  <div className="plan-builder-preview-image plan-builder-preview-image--fallback">Loading…</div>
+                )}
+              </>
+            ) : (
+              <p className="plan-builder-preview-empty">Hover a card to preview it here.</p>
+            )}
+          </aside>
+        </div>
+      </section>
 
-        <section
-          className="plan-builder-col plan-builder-col--sideboard"
-          aria-label="Sideboard"
+      <div className="plan-builder-flow-band">
+        <FlowZoneStacks
+          label="In"
+          arrow="↑"
+          tone="in"
+          count={totalIn}
+          entries={inEntries}
+          imageUrls={imageUrls}
+          onEnsureImage={onEnsureImage}
+          onHover={handleCardPreview}
+          onActivateCard={(card) => adjust(card, -1)}
+          emptyText="Drag sideboard cards here"
           onDragOver={allowDrop}
-          onDrop={handleDropReturnToSideboard}
-        >
-          <h3 className="plan-builder-col-title">Sideboard ({totalSideboard})</h3>
-          <SelectableSurface
-            panel="sideboard"
-            className="plan-builder-sideboard-surface"
-            onSelectRect={applyRectSelection}
-            onClearSelection={clearSelection}
-          >
-            <SideboardStacks
-              entries={sideboardEntries}
-              imageUrls={imageUrls}
-              onEnsureImage={onEnsureImage}
-              onHover={handleCardPreview}
-              onActivateCard={(card) => adjust(card, 1)}
-              isSelectedTile={(cardName, i) => isTileSelected('sideboard', cardName, i)}
-              onToggleTile={(cardName, i) => toggleTile('sideboard', cardName, i)}
-              buildTileDragPayload={(card, i) => buildTileDragPayload('sideboard', 'sideboard', card, i)}
-            />
-          </SelectableSurface>
+          onDrop={handleDropOnIn}
+          panel="in-zone"
+          onSelectRect={applyRectSelection}
+          onClearSelection={clearSelection}
+          isSelectedTile={(cardName, i) => isTileSelected('in-zone', cardName, i)}
+          onToggleTile={(cardName, i) => toggleTile('in-zone', cardName, i)}
+          buildTileDragPayload={(card, i) => buildTileDragPayload('in-zone', 'sideboard', card, i)}
+        />
+        <FlowZoneStacks
+          label="Out"
+          arrow="↓"
+          tone="out"
+          count={totalOut}
+          entries={outEntries}
+          imageUrls={imageUrls}
+          onEnsureImage={onEnsureImage}
+          onHover={handleCardPreview}
+          onActivateCard={(card) => adjust(card, -1)}
+          emptyText="Drag main-deck cards here"
+          onDragOver={allowDrop}
+          onDrop={handleDropOnOut}
+          panel="out-zone"
+          onSelectRect={applyRectSelection}
+          onClearSelection={clearSelection}
+          isSelectedTile={(cardName, i) => isTileSelected('out-zone', cardName, i)}
+          onToggleTile={(cardName, i) => toggleTile('out-zone', cardName, i)}
+          buildTileDragPayload={(card, i) => buildTileDragPayload('out-zone', 'main', card, i)}
+        />
+      </div>
 
-          <FlowZoneStacks
-            label="In"
-            arrowSide="left"
-            tone="in"
-            count={totalIn}
-            entries={inEntries}
+      <section
+        className="plan-builder-col plan-builder-col--sideboard"
+        aria-label="Sideboard"
+        onDragOver={allowDrop}
+        onDrop={handleDropReturnToSideboard}
+      >
+        <h3 className="plan-builder-col-title">Sideboard ({totalSideboard})</h3>
+        <SelectableSurface
+          panel="sideboard"
+          className="plan-builder-sideboard-surface"
+          onSelectRect={applyRectSelection}
+          onClearSelection={clearSelection}
+        >
+          <SideboardStacks
+            entries={sideboardEntries}
             imageUrls={imageUrls}
             onEnsureImage={onEnsureImage}
             onHover={handleCardPreview}
-            onActivateCard={(card) => adjust(card, -1)}
-            emptyText="Drag sideboard cards here"
-            onDragOver={allowDrop}
-            onDrop={handleDropOnIn}
-            panel="in-zone"
-            onSelectRect={applyRectSelection}
-            onClearSelection={clearSelection}
-            isSelectedTile={(cardName, i) => isTileSelected('in-zone', cardName, i)}
-            onToggleTile={(cardName, i) => toggleTile('in-zone', cardName, i)}
-            buildTileDragPayload={(card, i) => buildTileDragPayload('in-zone', 'sideboard', card, i)}
+            onActivateCard={(card) => adjust(card, 1)}
+            isSelectedTile={(cardName, i) => isTileSelected('sideboard', cardName, i)}
+            onToggleTile={(cardName, i) => toggleTile('sideboard', cardName, i)}
+            buildTileDragPayload={(card, i) => buildTileDragPayload('sideboard', 'sideboard', card, i)}
           />
-        </section>
-
-        {/* A slim third column (not floating) so it never overlaps the Out/In zones at the
-            bottom of the other two columns — see the layout note on .plan-builder-preview-panel. */}
-        <aside className="plan-builder-preview-panel" aria-label="Hovered card preview">
-          {previewCardName ? (
-            <>
-              <div className="plan-builder-preview-name">{previewCardName}</div>
-              {cardTypes[previewCardName] && (
-                <div className="plan-builder-preview-type">{cardTypes[previewCardName]}</div>
-              )}
-              {imageUrls[previewCardName] ? (
-                <img
-                  src={imageUrls[previewCardName]}
-                  alt={previewCardName}
-                  className="plan-builder-preview-image"
-                />
-              ) : imageUrls[previewCardName] === null ? (
-                <div className="plan-builder-preview-image plan-builder-preview-image--fallback">
-                  No preview available
-                </div>
-              ) : (
-                <div className="plan-builder-preview-image plan-builder-preview-image--fallback">Loading…</div>
-              )}
-            </>
-          ) : (
-            <p className="plan-builder-preview-empty">Hover a card to preview it here.</p>
-          )}
-        </aside>
-      </div>
+        </SelectableSurface>
+      </section>
     </div>
   )
 }

@@ -18,6 +18,12 @@ import './CardStack.css'
 // A real decklist copy count never approaches this; just guards against pathological data.
 const MAX_RENDERED_COPIES = 40
 
+// Cap how many copies actually cascade — a non-basic card can't exceed 4 anyway, but basic lands
+// routinely run 10-20+, and cascading every single one would make that one card's stack taller
+// than the rest of the row/column combined. Past the cap, the bottom (fully visible) card just
+// carries a "×N" badge with the true count instead of growing the pile further.
+const CASCADE_VISUAL_CAP = 5
+
 export default function CardStack({
   cardName,
   quantity,
@@ -34,13 +40,15 @@ export default function CardStack({
   compact = false,
 }) {
   const name = String(cardName || '').trim()
-  const count = Math.min(MAX_RENDERED_COPIES, Math.max(0, Math.floor(Number(quantity) || 0)))
-  if (!name || count <= 0) return null
+  const trueCount = Math.min(MAX_RENDERED_COPIES, Math.max(0, Math.floor(Number(quantity) || 0)))
+  if (!name || trueCount <= 0) return null
+  const count = Math.min(trueCount, CASCADE_VISUAL_CAP)
 
   return (
     <div className={`card-row-stack${compact ? ' card-row-stack--compact' : ''}`}>
       {Array.from({ length: count }, (_, i) => {
         const selected = Boolean(isSelected?.(i))
+        const isLast = i === count - 1
         return (
           <div
             key={i}
@@ -51,7 +59,7 @@ export default function CardStack({
             tabIndex={0}
             role="button"
             aria-pressed={selected}
-            aria-label={`${name}, copy ${i + 1} of ${count}`}
+            aria-label={`${name}, copy ${i + 1} of ${trueCount}`}
             title={name}
             onDragStart={(e) => {
               const payload = buildTileDragPayload?.(i)
@@ -109,6 +117,7 @@ export default function CardStack({
                 {imageLoading ? '…' : name}
               </span>
             )}
+            {isLast && trueCount > count && <span className="card-row-qty">×{trueCount}</span>}
           </div>
         )
       })}
