@@ -251,6 +251,16 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   const [cardColorIdentities, setCardColorIdentities] = useState({})
   const [cardLegalities, setCardLegalities] = useState({})
   const [cardManaValues, setCardManaValues] = useState({})
+  // Always-current mirrors of the four caches above, read by the metadata-fetch effect below
+  // instead of closing over the state directly — see that effect's comment for why.
+  const cardTypesRef = useRef(cardTypes)
+  const cardColorIdentitiesRef = useRef(cardColorIdentities)
+  const cardLegalitiesRef = useRef(cardLegalities)
+  const cardManaValuesRef = useRef(cardManaValues)
+  cardTypesRef.current = cardTypes
+  cardColorIdentitiesRef.current = cardColorIdentities
+  cardLegalitiesRef.current = cardLegalities
+  cardManaValuesRef.current = cardManaValues
   const [matchupValues, setMatchupValues] = useState({})
   const [keysToMatchup, setKeysToMatchup] = useState({})
   const [hideLands, setHideLands] = useState(false)
@@ -829,20 +839,29 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   /**
    * Fetch Scryfall metadata (type line, color identity, legalities, mana
    * value) for any card in the current deck that's missing it, and merge
-   * results into the per-name caches below. Each setState does an
-   * equality/no-op check before writing so a completed fetch that changes
-   * nothing doesn't re-trigger this same effect (it depends on all four
-   * caches) in an infinite loop.
+   * results into the per-name caches below.
+   *
+   * This effect deliberately depends on `safeCards` only, not on the four
+   * caches it writes to (read instead via the *Ref mirrors below, always the
+   * latest value without being a dependency). Depending on the caches too
+   * previously meant every single resolved card re-triggered this whole
+   * effect: React would cancel the in-flight fetch loop and start a brand
+   * new one for the shrunken remaining list, so on a deck of any size only a
+   * lucky few names ever finished before being restarted — the rest could
+   * spin without ever committing, which is why some cards silently never
+   * rendered. Depending on safeCards alone still catches deck switches/edits
+   * (they replace the cards array) while letting one fetch pass run to
+   * completion.
    */
   useEffect(() => {
     if (safeCards.length === 0) return
     const names = [...new Set(safeCards.map((c) => c?.name).filter(Boolean))]
     const toFetch = names.filter(
       (name) =>
-        !cardTypes[name]
-        || !cardColorIdentities[name]
-        || !cardLegalities[name]
-        || cardManaValues[name] === undefined
+        !cardTypesRef.current[name]
+        || !cardColorIdentitiesRef.current[name]
+        || !cardLegalitiesRef.current[name]
+        || cardManaValuesRef.current[name] === undefined
     )
     if (toFetch.length === 0) return
     let cancelled = false
@@ -884,7 +903,7 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
       })
     })
     return () => { cancelled = true }
-  }, [safeCards, cardTypes, cardColorIdentities, cardLegalities, cardManaValues])
+  }, [safeCards])
 
   /**
    * Capture a snapshot of the deck editor's fields to compare against for the

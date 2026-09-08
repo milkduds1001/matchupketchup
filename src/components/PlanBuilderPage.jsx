@@ -94,15 +94,31 @@ function SelectableSurface({ panel, onSelectRect, onClearSelection, className, c
       const container = containerRef.current
       if (!container) return
       const keys = new Set()
+      // Cards overlap into a cascade (see CardStack.css) — every row but the bottom-most one in
+      // its pile has its lower portion covered by the row stacked after it, so a plain
+      // bounding-box test against the marquee would also grab rows whose only overlap is that
+      // hidden, covered-up portion. Group rows by their immediate stack container (one per
+      // mana-value column / sideboard list / plan zone) and clip each row's hit-test to the
+      // strip actually exposed above the next row in that same stack.
+      const rowsByStack = new Map()
       container.querySelectorAll('[data-card-name]').forEach((node) => {
-        const r = node.getBoundingClientRect()
-        const overlaps =
-          r.left < finalRect.left + finalRect.width &&
-          r.left + r.width > finalRect.left &&
-          r.top < finalRect.top + finalRect.height &&
-          r.top + r.height > finalRect.top
-        if (!overlaps) return
-        keys.add(`${node.getAttribute('data-card-name')}::${node.getAttribute('data-tile-index')}`)
+        const stackEl = node.closest('.card-row-stack')?.parentElement
+        if (!stackEl) return
+        if (!rowsByStack.has(stackEl)) rowsByStack.set(stackEl, [])
+        rowsByStack.get(stackEl).push(node)
+      })
+      rowsByStack.forEach((rows) => {
+        rows.forEach((node, i) => {
+          const r = node.getBoundingClientRect()
+          const visibleBottom = i + 1 < rows.length ? rows[i + 1].getBoundingClientRect().top : r.bottom
+          const overlaps =
+            r.left < finalRect.left + finalRect.width &&
+            r.left + r.width > finalRect.left &&
+            r.top < finalRect.top + finalRect.height &&
+            visibleBottom > finalRect.top
+          if (!overlaps) return
+          keys.add(`${node.getAttribute('data-card-name')}::${node.getAttribute('data-tile-index')}`)
+        })
       })
       onSelectRect?.(panel, keys)
     }
@@ -567,7 +583,7 @@ export default function PlanBuilderPage({
           >
             {MANA_COLUMN_ORDER.map((columnKey) => {
               const entries = mainColumnMap.get(columnKey) || []
-              if (columnKey === MANA_COLUMN_UNKNOWN && entries.length === 0) return null
+              if (entries.length === 0) return null
               return (
                 <ManaColumnStacks
                   key={columnKey}
