@@ -42,16 +42,10 @@ export async function fetchCardTypes(cardNames, onResult, delayMs = DELAY_MS) {
   }
 }
 
-/**
- * Fetch full card JSON by exact name (for type_line, color_identity, legalities, etc.).
- * @returns {Promise<object|null>}
- */
-async function fetchCardJsonByExactName(cardName) {
-  if (!cardName || typeof cardName !== 'string') return null
-  const trimmed = cardName.trim()
-  if (!trimmed) return null
+/** One GET against the Scryfall "named" endpoint; null on any non-2xx response or network error. */
+async function getScryfallNamed(param, cardName) {
   try {
-    const url = `${SCRYFALL_NAMED_URL}?exact=${encodeURIComponent(trimmed)}`
+    const url = `${SCRYFALL_NAMED_URL}?${param}=${encodeURIComponent(cardName)}`
     const res = await fetch(url)
     if (!res.ok) return null
     const data = await res.json()
@@ -59,6 +53,23 @@ async function fetchCardJsonByExactName(cardName) {
   } catch {
     return null
   }
+}
+
+/**
+ * Fetch full card JSON by exact name (for type_line, color_identity, legalities, etc.).
+ * Falls back to Scryfall's fuzzy match if the exact lookup 404s — this also matches against a
+ * card's localized/alternate *printed* name (e.g. a Universes Beyond crossover card whose
+ * decklist/Arena name differs from Scryfall's canonical English `name`), which an exact match
+ * against the printed name alone would otherwise miss entirely.
+ * @returns {Promise<object|null>}
+ */
+async function fetchCardJsonByExactName(cardName) {
+  if (!cardName || typeof cardName !== 'string') return null
+  const trimmed = cardName.trim()
+  if (!trimmed) return null
+  const exact = await getScryfallNamed('exact', trimmed)
+  if (exact) return exact
+  return getScryfallNamed('fuzzy', trimmed)
 }
 
 /**
@@ -75,14 +86,22 @@ export async function fetchCardMetadata(cardNames, onResult, delayMs = DELAY_MS)
 }
 
 /**
+ * Best available image URL from a Scryfall card JSON object, or null. Falls back to the first
+ * face's images for transform/modal-DFC cards, which have no top-level `image_uris`.
+ */
+export function pickCardImageUrl(data) {
+  const uris = data?.image_uris || data?.card_faces?.[0]?.image_uris
+  if (!uris || typeof uris !== 'object') return null
+  // Prefer higher-res images to keep the preview crisp.
+  return uris.large || uris.normal || uris.small || uris.png || null
+}
+
+/**
  * Small/normal image URL for preview, or null.
  */
 export async function fetchCardImageUrlByName(cardName) {
   const data = await fetchCardJsonByExactName(cardName)
-  if (!data?.image_uris || typeof data.image_uris !== 'object') return null
-  const uris = data.image_uris
-  // Prefer higher-res images to keep the preview crisp.
-  return uris.large || uris.normal || uris.small || uris.png || null
+  return pickCardImageUrl(data)
 }
 
 /**

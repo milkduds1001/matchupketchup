@@ -49,7 +49,7 @@ import {
 } from './utils/syncGoldfishDefaults.js'
 import { setPrintPageLayout } from './utils/printPage.js'
 import { copyDeckAndOpenDecklistOrg } from './utils/decklistOrgExport.js'
-import { fetchCardMetadata, fetchCardImageUrlByName, searchCardsByName } from './utils/scryfall.js'
+import { fetchCardMetadata, fetchCardImageUrlByName, pickCardImageUrl, searchCardsByName } from './utils/scryfall.js'
 import logo from './assets/matchupketchup_logo_mark.png'
 import './App.css'
 
@@ -872,9 +872,15 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
         return { ...prev, [name]: legalities }
       })
       setCardManaValues((prev) => {
-        const cmc = typeof meta?.cmc === 'number' && !Number.isNaN(meta.cmc) ? meta.cmc : 0
+        // null (not 0) for an unresolved/missing cmc — a lookup that never found the card is not
+        // the same fact as a confirmed 0-cost card, and manaColumns.js buckets them differently.
+        const cmc = typeof meta?.cmc === 'number' && !Number.isNaN(meta.cmc) ? meta.cmc : null
         if (prev[name] === cmc) return prev
         return { ...prev, [name]: cmc }
+      })
+      setDeckCardPreviewUrls((prev) => {
+        if (prev[name] !== undefined) return prev
+        return { ...prev, [name]: pickCardImageUrl(meta) }
       })
     })
     return () => { cancelled = true }

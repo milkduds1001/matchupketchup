@@ -1,10 +1,17 @@
 .card-row-stack {
   --card-w: 168px;
   --card-h: 234px;
-  --card-peek: 34px;
+  --card-peek: 22px;
   display: flex;
   flex-direction: column;
   width: var(--card-w);
+}
+
+/* Cascade continues across different cards in the same column/list — a new card's stack pulls up
+   flush against the previous card's last (fully visible) copy, so the whole column reads as one
+   unbroken overlapping pile rather than separate card-name blocks with gaps between them. */
+.card-row-stack + .card-row-stack {
+  margin-top: calc(var(--card-peek) - var(--card-h));
 }
 
 .card-row {
@@ -117,5 +124,5 @@
 .card-row-stack--compact {
   --card-w: 128px;
   --card-h: 179px;
-  --card-peek: 27px;
+  --card-peek: 17px;
 }

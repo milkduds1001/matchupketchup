@@ -26,6 +26,7 @@ import './PlanBuilderPage.css'
 import {
   MANA_COLUMN_LANDS,
   MANA_COLUMN_ORDER,
+  MANA_COLUMN_UNKNOWN,
   buildManaColumnMap,
   manaColumnLabel,
   sortCardsByManaThenName,
@@ -141,7 +142,10 @@ function ManaColumnStacks({
   buildTileDragPayload,
 }) {
   const total = entries.reduce((sum, { available }) => sum + available, 0)
-  const label = columnKey === MANA_COLUMN_LANDS ? 'Lands' : `Mana Value ${manaColumnLabel(columnKey)}`
+  const label =
+    columnKey === MANA_COLUMN_LANDS || columnKey === MANA_COLUMN_UNKNOWN
+      ? manaColumnLabel(columnKey)
+      : `Mana Value ${manaColumnLabel(columnKey)}`
   return (
     <div className={`plan-builder-mana-column${entries.length === 0 ? ' plan-builder-mana-column--empty' : ''}`}>
       <div className="plan-builder-mana-column-label">
@@ -561,22 +565,26 @@ export default function PlanBuilderPage({
             onSelectRect={applyRectSelection}
             onClearSelection={clearSelection}
           >
-            {MANA_COLUMN_ORDER.map((columnKey) => (
-              <ManaColumnStacks
-                key={columnKey}
-                columnKey={columnKey}
-                entries={mainColumnMap.get(columnKey) || []}
-                imageUrls={imageUrls}
-                onEnsureImage={onEnsureImage}
-                onHover={onCardHover}
-                onMove={onCardMove}
-                onLeave={onCardLeave}
-                onActivateCard={(card) => adjust(card, 1)}
-                isSelectedTile={(cardName, i) => isTileSelected('main-deck', cardName, i)}
-                onToggleTile={(cardName, i) => toggleTile('main-deck', cardName, i)}
-                buildTileDragPayload={(card, i) => buildTileDragPayload('main-deck', 'main', card, i)}
-              />
-            ))}
+            {MANA_COLUMN_ORDER.map((columnKey) => {
+              const entries = mainColumnMap.get(columnKey) || []
+              if (columnKey === MANA_COLUMN_UNKNOWN && entries.length === 0) return null
+              return (
+                <ManaColumnStacks
+                  key={columnKey}
+                  columnKey={columnKey}
+                  entries={entries}
+                  imageUrls={imageUrls}
+                  onEnsureImage={onEnsureImage}
+                  onHover={onCardHover}
+                  onMove={onCardMove}
+                  onLeave={onCardLeave}
+                  onActivateCard={(card) => adjust(card, 1)}
+                  isSelectedTile={(cardName, i) => isTileSelected('main-deck', cardName, i)}
+                  onToggleTile={(cardName, i) => toggleTile('main-deck', cardName, i)}
+                  buildTileDragPayload={(card, i) => buildTileDragPayload('main-deck', 'main', card, i)}
+                />
+              )
+            })}
           </SelectableSurface>
         </section>
 

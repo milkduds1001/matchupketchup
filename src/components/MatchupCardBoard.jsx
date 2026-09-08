@@ -14,6 +14,7 @@ import CardPile from './CardPile.jsx'
 import './MatchupCardBoard.css'
 import {
   MANA_COLUMN_ORDER,
+  MANA_COLUMN_UNKNOWN,
   buildManaColumnMap,
   manaColumnLabel,
 } from '../utils/manaColumns.js'
@@ -442,6 +443,7 @@ export default function MatchupCardBoard({
             {MANA_COLUMN_ORDER.map((columnKey) => {
               const entries = mainColumnMap.get(columnKey) || []
               if (hideLands && columnKey === 'lands') return null
+              if (columnKey === MANA_COLUMN_UNKNOWN && entries.length === 0) return null
               return (
                 <ManaColumn
                   key={`main-${columnKey}`}
@@ -468,6 +470,7 @@ export default function MatchupCardBoard({
               <div className="matchup-mana-columns matchup-mana-columns--sideboard">
                 {MANA_COLUMN_ORDER.map((columnKey) => {
                   const entries = sideColumnMap.get(columnKey) || []
+                  if (columnKey === MANA_COLUMN_UNKNOWN && entries.length === 0) return null
                   return (
                     <ManaColumn
                       key={`side-${columnKey}`}
