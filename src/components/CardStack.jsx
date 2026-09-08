@@ -1,7 +1,9 @@
 /**
- * CardStack.jsx — renders every available copy of one card as its own large, individually
- * selectable/draggable row, stacked directly on top of each other (like a card catalog), instead
- * of one tile plus a numeric "x4" badge (see the older CardPile.jsx, used by MatchupCardBoard.jsx).
+ * CardStack.jsx — renders every available copy of one card as its own large, full-art,
+ * individually selectable/draggable row. Copies overlap like a card catalog (Moxfield-style):
+ * each copy but the last is pulled up under the one below it so only its top "peek" strip
+ * (name + mana cost) shows, while the last/bottom copy renders in full. Instead of one tile plus
+ * a numeric "x4" badge (see the older CardPile.jsx, used by MatchupCardBoard.jsx).
  *
  * All tiles for a card are fungible — the data model tracks only a quantity, not per-copy
  * identity — but selection is still tracked per rendered row (`isSelected(tileIndex)`), so each
@@ -21,7 +23,6 @@ export default function CardStack({
   quantity,
   imageUrl,
   imageLoading = false,
-  manaValue,
   isSelected,
   onToggleTile,
   onActivate,
@@ -102,12 +103,12 @@ export default function CardStack({
               {selected ? '✓' : ''}
             </button>
             {imageUrl ? (
-              <img src={imageUrl} alt="" className="card-row-thumb" draggable={false} />
+              <img src={imageUrl} alt={name} className="card-row-art" draggable={false} />
             ) : (
-              <span className="card-row-thumb card-row-thumb--fallback">{imageLoading ? '…' : name.slice(0, 1)}</span>
+              <span className="card-row-art card-row-art--fallback">
+                {imageLoading ? '…' : name}
+              </span>
             )}
-            <span className="card-row-name">{name}</span>
-            {manaValue != null && <span className="card-row-mv">{manaValue}</span>}
           </div>
         )
       })}

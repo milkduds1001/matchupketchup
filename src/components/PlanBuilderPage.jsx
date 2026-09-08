@@ -24,6 +24,7 @@ import { createPortal } from 'react-dom'
 import CardStack from './CardStack.jsx'
 import './PlanBuilderPage.css'
 import {
+  MANA_COLUMN_LANDS,
   MANA_COLUMN_ORDER,
   buildManaColumnMap,
   manaColumnLabel,
@@ -129,7 +130,6 @@ function SelectableSurface({ panel, onSelectRect, onClearSelection, className, c
 function ManaColumnStacks({
   columnKey,
   entries,
-  cardManaValues,
   imageUrls,
   onEnsureImage,
   onHover,
@@ -140,16 +140,19 @@ function ManaColumnStacks({
   onToggleTile,
   buildTileDragPayload,
 }) {
+  const total = entries.reduce((sum, { available }) => sum + available, 0)
+  const label = columnKey === MANA_COLUMN_LANDS ? 'Lands' : `Mana Value ${manaColumnLabel(columnKey)}`
   return (
     <div className={`plan-builder-mana-column${entries.length === 0 ? ' plan-builder-mana-column--empty' : ''}`}>
-      <div className="plan-builder-mana-column-label">{manaColumnLabel(columnKey)}</div>
+      <div className="plan-builder-mana-column-label">
+        {label} <span className="plan-builder-mana-column-count">({total})</span>
+      </div>
       <div className="plan-builder-mana-column-stacks">
         {entries.map(({ card, available }) => (
           <CardStack
             key={`${card.id ?? card.name}-${card.zone}`}
             cardName={card.name}
             quantity={available}
-            manaValue={cardManaValues?.[card.name]}
             imageUrl={imageUrls[card.name]}
             imageLoading={imageUrls[card.name] === undefined}
             isSelected={(i) => isSelectedTile(card.name, i)}
@@ -170,7 +173,6 @@ function ManaColumnStacks({
 /** Sideboard panel: one flowing list (a quarter-width column has no room for 9 mana sub-columns), sorted by mana value then name. */
 function SideboardStacks({
   entries,
-  cardManaValues,
   imageUrls,
   onEnsureImage,
   onHover,
@@ -191,7 +193,6 @@ function SideboardStacks({
           key={`${card.id ?? card.name}-${card.zone}`}
           cardName={card.name}
           quantity={available}
-          manaValue={cardManaValues?.[card.name]}
           imageUrl={imageUrls[card.name]}
           imageLoading={imageUrls[card.name] === undefined}
           isSelected={(i) => isSelectedTile(card.name, i)}
@@ -202,7 +203,6 @@ function SideboardStacks({
           onHover={onHover}
           onMove={onMove}
           onLeave={onLeave}
-          compact
         />
       ))}
     </div>
@@ -214,7 +214,6 @@ function PlanZoneStacks({
   title,
   tone,
   entries,
-  cardManaValues,
   imageUrls,
   onEnsureImage,
   onHover,
@@ -241,7 +240,6 @@ function PlanZoneStacks({
                 key={`${card.id ?? card.name}-${card.zone}`}
                 cardName={card.name}
                 quantity={assigned}
-                manaValue={cardManaValues?.[card.name]}
                 imageUrl={imageUrls[card.name]}
                 imageLoading={imageUrls[card.name] === undefined}
                 isSelected={(i) => isSelectedTile(card.name, i)}
@@ -417,6 +415,7 @@ export default function PlanBuilderPage({
 
   const totalOut = outEntries.reduce((sum, row) => sum + row.assigned, 0)
   const totalIn = inEntries.reduce((sum, row) => sum + row.assigned, 0)
+  const totalSideboard = sideboardEntries.reduce((sum, row) => sum + row.available, 0)
 
   // --- Drag-and-drop: Out accepts main-deck tiles, In accepts sideboard tiles; dropping a
   // plan-zone tile back onto the main-deck or sideboard panel undoes that assignment. Each
@@ -567,7 +566,6 @@ export default function PlanBuilderPage({
                 key={columnKey}
                 columnKey={columnKey}
                 entries={mainColumnMap.get(columnKey) || []}
-                cardManaValues={cardManaValues}
                 imageUrls={imageUrls}
                 onEnsureImage={onEnsureImage}
                 onHover={onCardHover}
@@ -588,7 +586,7 @@ export default function PlanBuilderPage({
           onDragOver={allowDrop}
           onDrop={handleDropReturnToSideboard}
         >
-          <h3 className="plan-builder-col-title">Sideboard</h3>
+          <h3 className="plan-builder-col-title">Sideboard ({totalSideboard})</h3>
           <SelectableSurface
             panel="sideboard"
             className="plan-builder-sideboard-surface"
@@ -597,7 +595,6 @@ export default function PlanBuilderPage({
           >
             <SideboardStacks
               entries={sideboardEntries}
-              cardManaValues={cardManaValues}
               imageUrls={imageUrls}
               onEnsureImage={onEnsureImage}
               onHover={onCardHover}
@@ -622,7 +619,6 @@ export default function PlanBuilderPage({
               title="In"
               tone="in"
               entries={inEntries}
-              cardManaValues={cardManaValues}
               imageUrls={imageUrls}
               onEnsureImage={onEnsureImage}
               onHover={onCardHover}
@@ -647,7 +643,6 @@ export default function PlanBuilderPage({
               title="Out"
               tone="out"
               entries={outEntries}
-              cardManaValues={cardManaValues}
               imageUrls={imageUrls}
               onEnsureImage={onEnsureImage}
               onHover={onCardHover}

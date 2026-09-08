@@ -154,7 +154,7 @@
 
 .plan-builder-columns {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 3fr 1.3fr 1fr;
   gap: 1rem;
   align-items: start;
 }
@@ -205,8 +205,8 @@
 .plan-builder-mana-columns {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(190px, 1fr);
-  gap: 0.6rem;
+  grid-auto-columns: minmax(200px, 1fr);
+  gap: 0.7rem;
   flex: 1;
   align-content: start;
 }
@@ -214,8 +214,9 @@
 .plan-builder-mana-column {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.4rem;
-  min-width: 190px;
+  min-width: 200px;
   padding: 0.5rem 0.45rem 0.6rem;
   border-radius: var(--radius-md, 10px);
   background: color-mix(in srgb, var(--color-card, #e4d7bd) 55%, var(--color-surface, #efe6d3));
@@ -232,6 +233,11 @@
   font-size: 0.98rem;
   letter-spacing: 0.05em;
   color: var(--color-text-muted, #5a5a5a);
+  white-space: nowrap;
+}
+
+.plan-builder-mana-column-count {
+  opacity: 0.75;
 }
 
 .plan-builder-mana-column-stacks {
