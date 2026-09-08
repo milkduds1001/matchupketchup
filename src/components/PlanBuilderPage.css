@@ -150,11 +150,11 @@
   pointer-events: none;
 }
 
-/* ---- Columns: main deck (50%) | sideboard (25%) | in/out plan (25%, split top/bottom) ---- */
+/* ---- Columns: preview panel | main deck (with Out below it) | sideboard (with In below it) ---- */
 
 .plan-builder-columns {
   display: grid;
-  grid-template-columns: 3fr 1.3fr 1fr;
+  grid-template-columns: 220px 3fr 1.3fr;
   gap: 1rem;
   align-items: start;
 }
@@ -177,19 +177,11 @@
 .plan-builder-col--sideboard {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
 }
 
 .plan-builder-sideboard-surface {
   flex: 1;
   min-height: 220px;
-}
-
-.plan-builder-col--plan {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.75rem;
 }
 
 .plan-builder-col-title {
@@ -261,67 +253,130 @@
   color: var(--color-text-muted, #5a5a5a);
 }
 
-/* ---- In/Out plan zones ---- */
+/* ---- Fixed hover-preview panel (left column) ---- */
 
-.plan-builder-plan-zone {
-  flex: 1;
+.plan-builder-preview-panel {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
   display: flex;
   flex-direction: column;
-  min-height: 180px;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  background: var(--color-surface, #efe6d3);
+  border: 1px solid var(--color-border, #d6c7a8);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(43, 43, 43, 0.06));
+}
+
+.plan-builder-preview-name {
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+}
+
+.plan-builder-preview-type {
+  margin-top: -0.35rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #5a5a5a);
+}
+
+.plan-builder-preview-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 63 / 88;
+  border-radius: 4.4% / 3.2%;
+  object-fit: cover;
+  box-shadow: 0 4px 14px rgba(43, 43, 43, 0.22);
+}
+
+.plan-builder-preview-image--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #5a5a5a);
+  background: color-mix(in srgb, var(--color-card, #e4d7bd) 55%, var(--color-surface, #efe6d3));
+  border: 1px dashed var(--color-border, #d6c7a8);
+}
+
+.plan-builder-preview-empty {
+  margin: 0;
+  padding: 2rem 0.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #5a5a5a);
+}
+
+/* ---- Out (under main deck) / In (under sideboard) flow zones: cards sit side by side, only
+   same-card copies overlap, no mana-value grouping ---- */
+
+.plan-builder-flow-zone {
+  margin-top: 0.85rem;
   border-radius: var(--radius-md, 10px);
   border: 2px dashed color-mix(in srgb, var(--color-border, #d6c7a8) 90%, transparent);
   background: color-mix(in srgb, var(--color-card, #e4d7bd) 45%, var(--color-surface, #efe6d3));
-  overflow: hidden;
+  padding: 0.6rem 0.75rem 0.75rem;
 }
 
-.plan-builder-plan-zone--in {
+.plan-builder-flow-zone--in {
   border-color: color-mix(in srgb, var(--status-success, #2e7d32) 35%, var(--color-border, #d6c7a8));
 }
 
-.plan-builder-plan-zone--out {
+.plan-builder-flow-zone--out {
   border-color: color-mix(in srgb, var(--color-primary, #c62828) 35%, var(--color-border, #d6c7a8));
 }
 
-.plan-builder-plan-zone-title {
-  padding: 0.55rem 0.75rem 0.2rem;
+.plan-builder-flow-zone-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
   font-family: var(--font-display, 'Bebas Neue', sans-serif);
   font-size: 1.05rem;
   letter-spacing: 0.05em;
   font-weight: 400;
 }
 
-.plan-builder-plan-zone--in .plan-builder-plan-zone-title {
+.plan-builder-flow-zone--in .plan-builder-flow-zone-title {
   color: var(--status-success, #2e7d32);
 }
 
-.plan-builder-plan-zone--out .plan-builder-plan-zone-title {
+.plan-builder-flow-zone--out .plan-builder-flow-zone-title {
   color: var(--color-primary, #c62828);
 }
 
-.plan-builder-plan-zone-body {
-  flex: 1;
-  padding: 0.25rem 0.6rem 0.6rem;
-  overflow: auto;
+.plan-builder-flow-arrow {
+  color: var(--status-success, #2e7d32);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
-.plan-builder-plan-zone-empty {
+.plan-builder-flow-zone-empty {
   margin: 0;
-  padding: 1rem 0.5rem;
+  padding: 0.75rem 0.5rem;
   text-align: center;
   font-size: 0.8rem;
   color: var(--color-text-muted, #5a5a5a);
 }
 
-.plan-builder-plan-zone-stacks {
+.plan-builder-flow-zone-stacks {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.6rem;
 }
 
-.plan-builder-plan-zone-surface {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+/* Different cards sit side by side here — override CardStack.css's continuous vertical cascade
+   (meant for the mana-value columns/sideboard list), which would otherwise pull each new card
+   stack up underneath the previous one regardless of layout direction. */
+.plan-builder-flow-zone-stacks > .card-row-stack + .card-row-stack {
+  margin-top: 0;
 }
 
 @media (max-width: 1100px) {

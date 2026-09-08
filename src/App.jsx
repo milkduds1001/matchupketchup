@@ -1345,8 +1345,8 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
       <main className="main-content">
         {/*
           Card-hover preview tooltip, portaled to the browser body so it always renders above
-          everything else. Shared by both Step 4 (MatchupCardBoard) and the Sideboard Builder
-          (PlanBuilderPage) — rendered here, once, so it isn't gated behind either view.
+          everything else. Used only by Step 4 (MatchupCardBoard) — the Sideboard Builder
+          (PlanBuilderPage) has its own fixed, non-cursor-following preview panel instead.
         */}
         {typeof document !== 'undefined' &&
           matchupCursorPreviewStyle &&
@@ -2169,9 +2169,6 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
                   onChangeCell={handleMatchupChange}
                   imageUrls={deckCardPreviewUrls}
                   onEnsureImage={ensureDeckCardPreview}
-                  onCardHover={handleMatchupCardHover}
-                  onCardMove={handleMatchupCardMove}
-                  onCardLeave={handleMatchupCardLeave}
                 />
               ) : (
                 <section className="section section-compact">

@@ -34,14 +34,12 @@
 
 .card-row:hover,
 .card-row:focus-visible {
-  z-index: 1;
-  transform: translateY(-10px);
-  box-shadow: 0 10px 22px rgba(43, 43, 43, 0.35);
+  box-shadow: 0 3px 10px rgba(43, 43, 43, 0.3);
 }
 
 .card-row:focus-visible {
   outline: none;
-  box-shadow: 0 10px 22px rgba(43, 43, 43, 0.35), var(--focus-ring, 0 0 0 3px rgba(105, 130, 155, 0.42));
+  box-shadow: 0 3px 10px rgba(43, 43, 43, 0.3), var(--focus-ring, 0 0 0 3px rgba(105, 130, 155, 0.42));
 }
 
 .card-row--selected {
