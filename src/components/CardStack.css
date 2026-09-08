@@ -1,7 +1,7 @@
 .card-row-stack {
-  --card-w: 168px;
-  --card-h: 234px;
-  --card-peek: 22px;
+  --card-w: 140px;
+  --card-h: 196px;
+  --card-peek: 18px;
   display: flex;
   flex-direction: column;
   width: var(--card-w);
@@ -120,7 +120,7 @@
 }
 
 .card-row-stack--compact {
-  --card-w: 128px;
-  --card-h: 179px;
-  --card-peek: 17px;
+  --card-w: 106px;
+  --card-h: 148px;
+  --card-peek: 13px;
 }

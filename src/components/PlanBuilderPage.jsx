@@ -232,6 +232,7 @@ function FlowZoneStacks({
   label,
   arrowSide,
   tone,
+  count,
   entries,
   imageUrls,
   onEnsureImage,
@@ -254,37 +255,40 @@ function FlowZoneStacks({
           <span className="plan-builder-flow-arrow" aria-hidden="true">←</span>
         )}
         <span>{label}</span>
+        <span className="plan-builder-flow-count">({count})</span>
         {arrowSide === 'right' && (
           <span className="plan-builder-flow-arrow" aria-hidden="true">→</span>
         )}
       </div>
-      {entries.length === 0 ? (
-        <p className="plan-builder-flow-zone-empty">{emptyText}</p>
-      ) : (
-        <SelectableSurface
-          panel={panel}
-          className="plan-builder-flow-zone-stacks"
-          onSelectRect={onSelectRect}
-          onClearSelection={onClearSelection}
-        >
-          {entries.map(({ card, assigned }) => (
-            <CardStack
-              key={`${card.id ?? card.name}-${card.zone}`}
-              cardName={card.name}
-              quantity={assigned}
-              imageUrl={imageUrls[card.name]}
-              imageLoading={imageUrls[card.name] === undefined}
-              isSelected={(i) => isSelectedTile(card.name, i)}
-              onToggleTile={(i) => onToggleTile(card.name, i)}
-              buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
-              onActivate={() => onActivateCard?.(card)}
-              onEnsureImage={onEnsureImage}
-              onHover={onHover}
-              compact
-            />
-          ))}
-        </SelectableSurface>
-      )}
+      <div className="plan-builder-flow-zone-body">
+        {entries.length === 0 ? (
+          <p className="plan-builder-flow-zone-empty">{emptyText}</p>
+        ) : (
+          <SelectableSurface
+            panel={panel}
+            className="plan-builder-flow-zone-stacks"
+            onSelectRect={onSelectRect}
+            onClearSelection={onClearSelection}
+          >
+            {entries.map(({ card, assigned }) => (
+              <CardStack
+                key={`${card.id ?? card.name}-${card.zone}`}
+                cardName={card.name}
+                quantity={assigned}
+                imageUrl={imageUrls[card.name]}
+                imageLoading={imageUrls[card.name] === undefined}
+                isSelected={(i) => isSelectedTile(card.name, i)}
+                onToggleTile={(i) => onToggleTile(card.name, i)}
+                buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
+                onActivate={() => onActivateCard?.(card)}
+                onEnsureImage={onEnsureImage}
+                onHover={onHover}
+                compact
+              />
+            ))}
+          </SelectableSurface>
+        )}
+      </div>
     </div>
   )
 }
@@ -587,32 +591,6 @@ export default function PlanBuilderPage({
       </p>
 
       <div className="plan-builder-columns">
-        <aside className="plan-builder-preview-panel" aria-label="Hovered card preview">
-          {previewCardName ? (
-            <>
-              <div className="plan-builder-preview-name">{previewCardName}</div>
-              {cardTypes[previewCardName] && (
-                <div className="plan-builder-preview-type">{cardTypes[previewCardName]}</div>
-              )}
-              {imageUrls[previewCardName] ? (
-                <img
-                  src={imageUrls[previewCardName]}
-                  alt={previewCardName}
-                  className="plan-builder-preview-image"
-                />
-              ) : imageUrls[previewCardName] === null ? (
-                <div className="plan-builder-preview-image plan-builder-preview-image--fallback">
-                  No preview available
-                </div>
-              ) : (
-                <div className="plan-builder-preview-image plan-builder-preview-image--fallback">Loading…</div>
-              )}
-            </>
-          ) : (
-            <p className="plan-builder-preview-empty">Hover a card to preview it here.</p>
-          )}
-        </aside>
-
         <section
           className="plan-builder-col plan-builder-col--main"
           aria-label="Main deck"
@@ -650,6 +628,7 @@ export default function PlanBuilderPage({
             label="Out"
             arrowSide="right"
             tone="out"
+            count={totalOut}
             entries={outEntries}
             imageUrls={imageUrls}
             onEnsureImage={onEnsureImage}
@@ -696,6 +675,7 @@ export default function PlanBuilderPage({
             label="In"
             arrowSide="left"
             tone="in"
+            count={totalIn}
             entries={inEntries}
             imageUrls={imageUrls}
             onEnsureImage={onEnsureImage}
@@ -712,6 +692,34 @@ export default function PlanBuilderPage({
             buildTileDragPayload={(card, i) => buildTileDragPayload('in-zone', 'sideboard', card, i)}
           />
         </section>
+
+        {/* A slim third column (not floating) so it never overlaps the Out/In zones at the
+            bottom of the other two columns — see the layout note on .plan-builder-preview-panel. */}
+        <aside className="plan-builder-preview-panel" aria-label="Hovered card preview">
+          {previewCardName ? (
+            <>
+              <div className="plan-builder-preview-name">{previewCardName}</div>
+              {cardTypes[previewCardName] && (
+                <div className="plan-builder-preview-type">{cardTypes[previewCardName]}</div>
+              )}
+              {imageUrls[previewCardName] ? (
+                <img
+                  src={imageUrls[previewCardName]}
+                  alt={previewCardName}
+                  className="plan-builder-preview-image"
+                />
+              ) : imageUrls[previewCardName] === null ? (
+                <div className="plan-builder-preview-image plan-builder-preview-image--fallback">
+                  No preview available
+                </div>
+              ) : (
+                <div className="plan-builder-preview-image plan-builder-preview-image--fallback">Loading…</div>
+              )}
+            </>
+          ) : (
+            <p className="plan-builder-preview-empty">Hover a card to preview it here.</p>
+          )}
+        </aside>
       </div>
     </div>
   )
