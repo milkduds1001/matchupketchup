@@ -191,8 +191,8 @@ function ManaColumnStacks({ label, entries, imageUrls, onEnsureImage, onActivate
   )
 }
 
-/** Sideboard panel: one cascading column, sorted by mana value then name. Large cards — the
- * sideboard gets a whole column of its own with nothing else competing for space. */
+/** Sideboard panel: one cascading column, sorted by mana value then name. Same card size/sizing
+ * constants as every other stack on the page (Main deck, Outs, Ins) — see CardStack.css. */
 function SideboardStacks({
   entries,
   imageUrls,
@@ -219,7 +219,6 @@ function SideboardStacks({
           buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
           onActivate={() => onActivateCard?.(card)}
           onEnsureImage={onEnsureImage}
-          size="large"
         />
       ))}
     </div>

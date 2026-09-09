@@ -5,14 +5,22 @@
   display: flex;
   flex-direction: column;
   width: var(--card-w);
+  /* One canonical rule for every stack on the page: every row, including the last, exposes
+     exactly --card-peek of vertical face by default. Rows below the first are already pulled up
+     to overlap (see the negative-margin rule below) — nothing occludes the *last* row's own
+     bottom, though, so without this clip it alone renders at full --card-h while every other row
+     shows only its peek strip. Fixing the stack's own height to rows*peek and clipping crops that
+     last row's excess bottom the same way overlap already hides the others', with no per-column
+     overrides and no change to each row's own size, image, or aspect ratio. */
+  height: calc(var(--card-peek) * var(--stack-rows, 1));
+  overflow: hidden;
 }
 
-/* Cascade continues across different cards in the same column/list — a new card's stack pulls up
-   flush against the previous card's last (fully visible) copy, so the whole column reads as one
-   unbroken overlapping pile rather than separate card-name blocks with gaps between them. */
-.card-row-stack + .card-row-stack {
-  margin-top: calc(var(--card-peek) - var(--card-h));
-}
+/* No gap/overlap needed between different cards' stacks: since every stack's own height is now
+   exactly rows*peek (see .card-row-stack above) with no leftover full-card space at the end, plain
+   flow already sits each new stack flush against the previous one — the column still reads as one
+   unbroken pile. (A negative margin here was needed only when the last row of a stack rendered at
+   full --card-h; that's no longer true for any row.) */
 
 .card-row {
   position: relative;
@@ -139,10 +147,4 @@
   --card-w: 106px;
   --card-h: 148px;
   --card-peek: 13px;
-}
-
-.card-row-stack--large {
-  --card-w: 190px;
-  --card-h: 265px;
-  --card-peek: 24px;
 }
