@@ -43,7 +43,7 @@ export default function CardStack({
   const sizeClass = size === 'default' ? '' : ` card-row-stack--${size}`
 
   return (
-    <div className={`card-row-stack${sizeClass}`} style={{ '--stack-rows': count }}>
+    <div className={`card-row-stack${sizeClass}`}>
       {Array.from({ length: count }, (_, i) => {
         const selected = Boolean(isSelected?.(i))
         const isLast = i === count - 1
