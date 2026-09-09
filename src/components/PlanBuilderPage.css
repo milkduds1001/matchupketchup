@@ -208,6 +208,11 @@
   display: flex;
   flex-direction: column;
   padding: 0.75rem;
+  /* Hard clip at the tile's own edge. Without this, a child that's forced wider/taller than the
+     tile (e.g. the mana-columns container's min-width, sized for 6 fixed columns) paints past the
+     tile's border into whatever sits next to it instead of scrolling inside its own overflow:auto
+     wrapper — that's what caused Main Deck content to visually bleed over the Outs box. */
+  overflow: hidden;
 }
 
 .plan-builder-board-main {
@@ -216,8 +221,11 @@
 }
 
 .plan-builder-board-sideboard {
-  width: 320px;
-  height: 320px;
+  /* Taller than it is wide — matches Outs/Ins width, but a 15-card sideboard cascading at "large"
+     card size needs real vertical room to show every card without scrolling (measured worst case:
+     14 distinct singles ~= 600px of cascade + padding/title). */
+  width: 400px;
+  height: 720px;
 }
 
 .plan-builder-col-title {
@@ -228,19 +236,29 @@
   font-weight: 400;
 }
 
-/* ---- Main deck: fixed at 6 columns via CSS multi-column layout instead of one column per mana
-   value — once all 6 are in use, a mana value short enough to fit below a neighbor stacks there
-   (break-inside: avoid keeps any one mana value's cards from being split across the break) rather
-   than opening a 7th column. The 6 columns need more room than the deck's fixed-size box always
-   has, so this scrolls (both axes) inside that box instead of growing it or squeezing columns. ---- */
+/* ---- Main deck: fixed at MAIN_DECK_COLUMNS (6) plain flexbox columns — which mana-value group
+   lands in which column is decided in JS (splitByWeight), not CSS `column-count`; multi-column
+   layout's overflow/scroll behavior is unreliable across browsers and broke visibly on a real,
+   lopsided decklist. The 6 columns need more room than the deck's fixed-size box always has, so
+   this scrolls (both axes) inside that box instead of growing it or squeezing columns. ---- */
 
 .plan-builder-mana-columns {
   flex: 1;
   min-height: 0;
-  column-count: 6;
-  column-gap: 0.85rem;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.85rem;
   min-width: 970px;
   overflow: auto;
+}
+
+.plan-builder-mana-super-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex-shrink: 0;
+  width: 150px;
 }
 
 .plan-builder-mana-column {
@@ -248,8 +266,6 @@
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
-  break-inside: avoid;
-  margin-bottom: 0.85rem;
 }
 
 .plan-builder-mana-column-label {
@@ -308,8 +324,8 @@
 }
 
 .plan-builder-flow-zone {
-  width: 320px;
-  height: 320px;
+  width: 400px;
+  height: 400px;
   display: flex;
   flex-direction: column;
   padding: 0.5rem 0.75rem 0.65rem;

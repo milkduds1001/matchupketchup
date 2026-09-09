@@ -3,16 +3,19 @@
  * "Sideboard Builder" nav link). An alternative layout/interaction over the same data as Step 4's
  * MatchupCardBoard.jsx: instead of mana-value "piles" collapsed to a single tile + quantity
  * badge, every physical copy of a card is its own large, individually selectable/draggable row
- * (CardStack.jsx), stacked directly on top of each other. Layout (per a hand-drawn sketch): one
- * bordered board split into three areas, each pinned to a fixed number of columns so its aspect
- * ratio stays consistent regardless of deck size — Main deck (6 labeled mana-value columns; once
- * all 6 are in use, a mana value that fits below a shorter neighbor stacks there instead of
- * opening a 7th, via CSS `column-count`), a middle area with Outs on top (pointing right, toward
- * the sideboard) and Ins below (pointing left, toward the deck), each fixed at 2 columns where any
- * card can cascade on any other (see splitByWeight), and Sideboard as one large-card column sized
- * to comfortably fill the view. Main deck/Outs share one silver background; Sideboard/Ins share
- * one light-gold background — a card's box color tracks which "home" (deck or sideboard) it
- * belongs to, independent of the red/green out/in tone already on the border and arrow.
+ * (CardStack.jsx), stacked directly on top of each other. Layout (per a hand-drawn sketch): four
+ * separate square, fixed-size tiles — Main deck (bigger; fixed at MAIN_DECK_COLUMNS plain flexbox
+ * columns, each mana-value group greedily assigned to whichever column has the least content so
+ * far — see splitByWeight), Outs (pointing right, toward the sideboard) and Ins (pointing left,
+ * toward the deck) each fixed at FLOW_ZONE_COLUMNS columns where any card can cascade on any
+ * other, and Sideboard as one large-card column. Every tile is the same plain background; content
+ * that overflows a tile's fixed size scrolls inside it rather than growing the tile.
+ *
+ * Both the main-deck and Outs/Ins column splits are done in JS (splitByWeight), not CSS
+ * `column-count` — an earlier version used multi-column layout for the main deck, but that
+ * overflows/scrolls unreliably across browsers and broke visibly (content bleeding into the
+ * neighboring tile) on a real decklist with a lopsided curve. Plain flexbox columns computed here
+ * don't have that failure mode.
  *
  * Selection: click a row to move it instantly (one copy); shift/ctrl/cmd-click a row (or its
  * checkbox) to add it to a multi-card selection instead, or drag a rubber-band box over a panel's
@@ -244,6 +247,7 @@ function splitByWeight(entries, weightFn, columnCount) {
 }
 
 const FLOW_ZONE_COLUMNS = 2
+const MAIN_DECK_COLUMNS = 6
 
 /**
  * "Outs" (top, pointing right toward the sideboard cards are leaving to) or "Ins" (bottom,
@@ -452,6 +456,21 @@ export default function PlanBuilderPage({
     [mainCards, cardTypes, cardManaValues, activeArchName, activeRole, values]
   )
 
+  // Main deck is fixed at MAIN_DECK_COLUMNS columns: each mana-value group (MV0, MV1, ... Lands)
+  // is one indivisible unit, greedily balanced across the columns by total card count — the same
+  // splitByWeight used for Outs/Ins. This used to be done with CSS `column-count`, but multi-column
+  // overflow/scroll is unreliable across browsers and broke badly on a real, lopsided decklist
+  // (one mana value holding 30+ cards) — plain flexbox columns computed in JS don't have that risk.
+  const mainDeckColumns = useMemo(() => {
+    const groups = MANA_COLUMN_ORDER.map((columnKey) => ({
+      columnKey,
+      label: shortManaColumnLabel(columnKey),
+      entries: mainColumnMap.get(columnKey) || [],
+    })).filter((group) => group.entries.length > 0)
+    const weightFn = (group) => group.entries.reduce((sum, e) => sum + Math.min(e.available, 5), 0)
+    return splitByWeight(groups, weightFn, MAIN_DECK_COLUMNS).filter((column) => column.length > 0)
+  }, [mainColumnMap])
+
   const sideboardEntries = useMemo(() => {
     const rows = sideboardCards
       .map((card) => ({ card, available: getAvailableSideboardCopies(card, activeArchName, activeRole, values) }))
@@ -644,23 +663,23 @@ export default function PlanBuilderPage({
             onSelectRect={applyRectSelection}
             onClearSelection={clearSelection}
           >
-            {MANA_COLUMN_ORDER.map((columnKey) => {
-              const entries = mainColumnMap.get(columnKey) || []
-              if (entries.length === 0) return null
-              return (
-                <ManaColumnStacks
-                  key={columnKey}
-                  label={shortManaColumnLabel(columnKey)}
-                  entries={entries}
-                  imageUrls={imageUrls}
-                  onEnsureImage={onEnsureImage}
-                  onActivateCard={(card) => adjust(card, 1)}
-                  isSelectedTile={(cardName, i) => isTileSelected('main-deck', cardName, i)}
-                  onToggleTile={(cardName, i) => toggleTile('main-deck', cardName, i)}
-                  buildTileDragPayload={(card, i) => buildTileDragPayload('main-deck', 'main', card, i)}
-                />
-              )
-            })}
+            {mainDeckColumns.map((groupsInColumn, columnIndex) => (
+              <div className="plan-builder-mana-super-column" key={columnIndex}>
+                {groupsInColumn.map((group) => (
+                  <ManaColumnStacks
+                    key={group.columnKey}
+                    label={group.label}
+                    entries={group.entries}
+                    imageUrls={imageUrls}
+                    onEnsureImage={onEnsureImage}
+                    onActivateCard={(card) => adjust(card, 1)}
+                    isSelectedTile={(cardName, i) => isTileSelected('main-deck', cardName, i)}
+                    onToggleTile={(cardName, i) => toggleTile('main-deck', cardName, i)}
+                    buildTileDragPayload={(card, i) => buildTileDragPayload('main-deck', 'main', card, i)}
+                  />
+                ))}
+              </div>
+            ))}
           </SelectableSurface>
         </section>
 
