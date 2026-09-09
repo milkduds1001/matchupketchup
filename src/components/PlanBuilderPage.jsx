@@ -5,17 +5,19 @@
  * badge, every physical copy of a card is its own large, individually selectable/draggable row
  * (CardStack.jsx), stacked directly on top of each other. Layout (per a hand-drawn sketch): four
  * separate square, fixed-size tiles — Main deck (bigger; fixed at MAIN_DECK_COLUMNS plain flexbox
- * columns, each mana-value group greedily assigned to whichever column has the least content so
- * far — see splitByWeight), Outs (pointing right, toward the sideboard) and Ins (pointing left,
- * toward the deck) each fixed at FLOW_ZONE_COLUMNS columns where any card can cascade on any
- * other, and Sideboard as one large-card column. Every tile is the same plain background; content
- * that overflows a tile's fixed size scrolls inside it rather than growing the tile.
+ * columns, each mana-value group packed in ascending mana-value order across them — see
+ * packInOrder), Outs (pointing right, toward the sideboard) and Ins (pointing left, toward the
+ * deck) each fixed at FLOW_ZONE_COLUMNS columns where any card can cascade on any other, and
+ * Sideboard as one large-card column. Every tile is the same plain background; content that
+ * overflows a tile's fixed size scrolls inside it rather than growing the tile.
  *
- * Both the main-deck and Outs/Ins column splits are done in JS (splitByWeight), not CSS
- * `column-count` — an earlier version used multi-column layout for the main deck, but that
- * overflows/scrolls unreliably across browsers and broke visibly (content bleeding into the
- * neighboring tile) on a real decklist with a lopsided curve. Plain flexbox columns computed here
- * don't have that failure mode.
+ * Both the main-deck and Outs/Ins column splits are done in JS, not CSS `column-count` — an
+ * earlier version used multi-column layout for the main deck, but that overflows/scrolls
+ * unreliably across browsers and broke visibly (content bleeding into the neighboring tile) on a
+ * real decklist with a lopsided curve. Plain flexbox columns computed here don't have that failure
+ * mode. Main deck packs its mana-value groups in a fixed order (packInOrder); Outs/Ins assign each
+ * card a stable column via a persisted insertion rank (ranksForNames) rather than recomputing from
+ * current counts, so cards don't jump between columns as you click cards in and out.
  *
  * Selection: click a row to move it instantly (one copy); shift/ctrl/cmd-click a row (or its
  * checkbox) to add it to a multi-card selection instead, or drag a rubber-band box over a panel's
@@ -226,23 +228,55 @@ function SideboardStacks({
 }
 
 /**
- * Greedily distributes `entries` into `columnCount` buckets, largest-weight-first, always adding
- * the next entry to whichever bucket currently has the least accumulated weight. Used to split
- * Outs/Ins into a fixed number of columns that stay roughly balanced by visual height instead of
- * just splitting the list in half by count.
+ * Distributes already-ordered `groups` across `columnCount` columns without ever reordering them:
+ * walks the list once, left to right, moving on to the next column once the current one's
+ * accumulated weight would exceed a fair per-column share. Used for Main deck's mana-value
+ * columns, where the whole point is that they read in a fixed (ascending mana value) order — a
+ * weight-first packer would instead reorder columns by size, which is what used to happen here.
  */
-function splitByWeight(entries, weightFn, columnCount) {
-  const buckets = Array.from({ length: columnCount }, () => ({ items: [], weight: 0 }))
-  const sorted = [...entries].sort((a, b) => weightFn(b) - weightFn(a))
-  for (const entry of sorted) {
-    let lightest = buckets[0]
-    for (const bucket of buckets) {
-      if (bucket.weight < lightest.weight) lightest = bucket
+function packInOrder(groups, weightFn, columnCount) {
+  const totalWeight = groups.reduce((sum, g) => sum + weightFn(g), 0)
+  const target = totalWeight / columnCount || 1
+  const columns = []
+  let current = []
+  let currentWeight = 0
+  for (const group of groups) {
+    if (current.length > 0 && currentWeight >= target && columns.length < columnCount - 1) {
+      columns.push(current)
+      current = []
+      currentWeight = 0
     }
-    lightest.items.push(entry)
-    lightest.weight += weightFn(entry)
+    current.push(group)
+    currentWeight += weightFn(group)
   }
-  return buckets.map((bucket) => bucket.items)
+  if (current.length > 0) columns.push(current)
+  return columns
+}
+
+/**
+ * Assigns each name in `names` a stable rank within `scopeKey` (persisted in `ranksRef` across
+ * renders), so a card keeps the exact same rank — and therefore the same Outs/Ins column and the
+ * same position among its column-mates — for as long as it stays assigned, regardless of how any
+ * other card's count changes. Previously Outs/Ins were re-sorted by weight (or alphabetically)
+ * every render, so cards visibly jumped between columns as you clicked cards in and out; ranks
+ * only ever get handed out once, in the order a name first appears. A name no longer present
+ * (fully removed) is dropped, so re-adding it later is treated as new — it goes back to the end
+ * rather than reserving its old spot forever.
+ */
+function ranksForNames(ranksRef, scopeKey, names) {
+  let scope = ranksRef.current.get(scopeKey)
+  if (!scope) {
+    scope = { ranks: new Map(), next: 0 }
+    ranksRef.current.set(scopeKey, scope)
+  }
+  const present = new Set(names)
+  for (const name of scope.ranks.keys()) {
+    if (!present.has(name)) scope.ranks.delete(name)
+  }
+  for (const name of names) {
+    if (!scope.ranks.has(name)) scope.ranks.set(name, scope.next++)
+  }
+  return scope.ranks
 }
 
 const FLOW_ZONE_COLUMNS = 2
@@ -253,7 +287,8 @@ const MAIN_DECK_COLUMNS = 6
  * pointing left toward the main deck cards are joining) — stacked in their own middle column
  * between the deck and the sideboard, fixed at FLOW_ZONE_COLUMNS columns. Unlike the mana-value
  * columns (where cards group by mana value), any card here can cascade on top of any other —
- * entries are just greedily split across the columns to keep them visually balanced.
+ * each entry's column is `rank % FLOW_ZONE_COLUMNS` (see ranksForNames), a fixed assignment made
+ * once when the card first enters, not recomputed from current counts.
  */
 function FlowZoneStacks({
   label,
@@ -274,10 +309,11 @@ function FlowZoneStacks({
   onToggleTile,
   buildTileDragPayload,
 }) {
-  const columns = useMemo(
-    () => splitByWeight(entries, (entry) => Math.min(entry.assigned, 5), FLOW_ZONE_COLUMNS),
-    [entries]
-  )
+  const columns = useMemo(() => {
+    const buckets = Array.from({ length: FLOW_ZONE_COLUMNS }, () => [])
+    entries.forEach((entry) => buckets[entry.rank % FLOW_ZONE_COLUMNS].push(entry))
+    return buckets
+  }, [entries])
   return (
     <div className={`plan-builder-flow-zone plan-builder-flow-zone--${tone}`} onDragOver={onDragOver} onDrop={onDrop}>
       <div className="plan-builder-flow-zone-title">
@@ -456,10 +492,11 @@ export default function PlanBuilderPage({
   )
 
   // Main deck is fixed at MAIN_DECK_COLUMNS columns: each mana-value group (MV0, MV1, ... Lands)
-  // is one indivisible unit, greedily balanced across the columns by total card count — the same
-  // splitByWeight used for Outs/Ins. This used to be done with CSS `column-count`, but multi-column
-  // overflow/scroll is unreliable across browsers and broke badly on a real, lopsided decklist
-  // (one mana value holding 30+ cards) — plain flexbox columns computed in JS don't have that risk.
+  // is one indivisible unit, packed in ascending-mana-value order (packInOrder) across the
+  // columns — never reordered by size, so the columns always read left-to-right in mana-value
+  // order. This used to be done with CSS `column-count`, but multi-column overflow/scroll is
+  // unreliable across browsers and broke badly on a real, lopsided decklist (one mana value
+  // holding 30+ cards) — plain flexbox columns computed in JS don't have that risk.
   const mainDeckColumns = useMemo(() => {
     const groups = MANA_COLUMN_ORDER.map((columnKey) => ({
       columnKey,
@@ -467,7 +504,7 @@ export default function PlanBuilderPage({
       entries: mainColumnMap.get(columnKey) || [],
     })).filter((group) => group.entries.length > 0)
     const weightFn = (group) => group.entries.reduce((sum, e) => sum + Math.min(e.available, 5), 0)
-    return splitByWeight(groups, weightFn, MAIN_DECK_COLUMNS).filter((column) => column.length > 0)
+    return packInOrder(groups, weightFn, MAIN_DECK_COLUMNS).filter((column) => column.length > 0)
   }, [mainColumnMap])
 
   const sideboardEntries = useMemo(() => {
@@ -478,21 +515,28 @@ export default function PlanBuilderPage({
     return rows
   }, [sideboardCards, activeArchName, activeRole, values, cardTypes, cardManaValues])
 
-  // --- Derived data: cards already assigned Out (main deck) / In (sideboard) for the plan zones ---
+  // --- Derived data: cards already assigned Out (main deck) / In (sideboard) for the plan zones.
+  // Ordered (and split into Outs/Ins' two columns) by stable insertion rank, not by current count
+  // or name — see ranksForNames. ---
+  const outRanksRef = useRef(new Map())
+  const inRanksRef = useRef(new Map())
+
   const outEntries = useMemo(() => {
     const rows = mainCards
       .map((card) => ({ card, assigned: getAssignedOutCount(card, activeArchName, activeRole, values) }))
       .filter((row) => row.assigned > 0)
-    rows.sort((a, b) => a.card.name.localeCompare(b.card.name))
-    return rows
+    const ranks = ranksForNames(outRanksRef, `${activeArchName}::${activeRole}`, rows.map((row) => row.card.name))
+    rows.sort((a, b) => ranks.get(a.card.name) - ranks.get(b.card.name))
+    return rows.map((row) => ({ ...row, rank: ranks.get(row.card.name) }))
   }, [mainCards, activeArchName, activeRole, values])
 
   const inEntries = useMemo(() => {
     const rows = sideboardCards
       .map((card) => ({ card, assigned: getAssignedInCount(card, activeArchName, activeRole, values) }))
       .filter((row) => row.assigned > 0)
-    rows.sort((a, b) => a.card.name.localeCompare(b.card.name))
-    return rows
+    const ranks = ranksForNames(inRanksRef, `${activeArchName}::${activeRole}`, rows.map((row) => row.card.name))
+    rows.sort((a, b) => ranks.get(a.card.name) - ranks.get(b.card.name))
+    return rows.map((row) => ({ ...row, rank: ranks.get(row.card.name) }))
   }, [sideboardCards, activeArchName, activeRole, values])
 
   const totalOut = outEntries.reduce((sum, row) => sum + row.assigned, 0)
