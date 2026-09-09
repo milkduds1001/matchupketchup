@@ -2169,6 +2169,8 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
                   onChangeCell={handleMatchupChange}
                   imageUrls={deckCardPreviewUrls}
                   onEnsureImage={ensureDeckCardPreview}
+                  keysToMatchup={keysToMatchup}
+                  onKeysChange={handleKeysToMatchupChange}
                 />
               ) : (
                 <section className="section section-compact">
