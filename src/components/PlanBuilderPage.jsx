@@ -4,12 +4,15 @@
  * MatchupCardBoard.jsx: instead of mana-value "piles" collapsed to a single tile + quantity
  * badge, every physical copy of a card is its own large, individually selectable/draggable row
  * (CardStack.jsx), stacked directly on top of each other. Layout (per a hand-drawn sketch): one
- * bordered board split into three columns — Main deck (labeled mana-value columns, all in one row
- * that scrolls horizontally rather than wrapping, so every mana value stays visible side by side),
- * a middle column with Outs on top (pointing right, toward the sideboard they're leaving to) and
- * Ins below (pointing left, toward the deck they're joining) at a fixed height, and Sideboard as
- * its own (smaller-card) cascading column on the right. No vertical scrollbars anywhere — columns
- * size to content and the page itself scrolls if a deck doesn't fit one screen.
+ * bordered board split into three areas, each pinned to a fixed number of columns so its aspect
+ * ratio stays consistent regardless of deck size — Main deck (6 labeled mana-value columns; once
+ * all 6 are in use, a mana value that fits below a shorter neighbor stacks there instead of
+ * opening a 7th, via CSS `column-count`), a middle area with Outs on top (pointing right, toward
+ * the sideboard) and Ins below (pointing left, toward the deck), each fixed at 2 columns where any
+ * card can cascade on any other (see splitByWeight), and Sideboard as one large-card column sized
+ * to comfortably fill the view. Main deck/Outs share one silver background; Sideboard/Ins share
+ * one light-gold background — a card's box color tracks which "home" (deck or sideboard) it
+ * belongs to, independent of the red/green out/in tone already on the border and arrow.
  *
  * Selection: click a row to move it instantly (one copy); shift/ctrl/cmd-click a row (or its
  * checkbox) to add it to a multi-card selection instead, or drag a rubber-band box over a panel's
@@ -185,8 +188,8 @@ function ManaColumnStacks({ label, entries, imageUrls, onEnsureImage, onActivate
   )
 }
 
-/** Sideboard panel: one cascading column, sorted by mana value then name. Compact (smaller) cards
- * since the sideboard is a secondary reference area, not the main planning surface. */
+/** Sideboard panel: one cascading column, sorted by mana value then name. Large cards — the
+ * sideboard gets a whole column of its own with nothing else competing for space. */
 function SideboardStacks({
   entries,
   imageUrls,
@@ -213,7 +216,7 @@ function SideboardStacks({
           buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
           onActivate={() => onActivateCard?.(card)}
           onEnsureImage={onEnsureImage}
-          compact
+          size="large"
         />
       ))}
     </div>
@@ -221,12 +224,33 @@ function SideboardStacks({
 }
 
 /**
+ * Greedily distributes `entries` into `columnCount` buckets, largest-weight-first, always adding
+ * the next entry to whichever bucket currently has the least accumulated weight. Used to split
+ * Outs/Ins into a fixed number of columns that stay roughly balanced by visual height instead of
+ * just splitting the list in half by count.
+ */
+function splitByWeight(entries, weightFn, columnCount) {
+  const buckets = Array.from({ length: columnCount }, () => ({ items: [], weight: 0 }))
+  const sorted = [...entries].sort((a, b) => weightFn(b) - weightFn(a))
+  for (const entry of sorted) {
+    let lightest = buckets[0]
+    for (const bucket of buckets) {
+      if (bucket.weight < lightest.weight) lightest = bucket
+    }
+    lightest.items.push(entry)
+    lightest.weight += weightFn(entry)
+  }
+  return buckets.map((bucket) => bucket.items)
+}
+
+const FLOW_ZONE_COLUMNS = 2
+
+/**
  * "Outs" (top, pointing right toward the sideboard cards are leaving to) or "Ins" (bottom,
  * pointing left toward the main deck cards are joining) — stacked in their own middle column
- * between the deck and the sideboard. Unlike the mana-value columns, cards here sit side by side
- * in a flowing row rather than cascading down the page — order isn't tied to mana value, and only
- * copies of the *same* card overlap into their own little pile (CardStack's own internal cascade
- * still applies).
+ * between the deck and the sideboard, fixed at FLOW_ZONE_COLUMNS columns. Unlike the mana-value
+ * columns (where cards group by mana value), any card here can cascade on top of any other —
+ * entries are just greedily split across the columns to keep them visually balanced.
  */
 function FlowZoneStacks({
   label,
@@ -247,6 +271,10 @@ function FlowZoneStacks({
   onToggleTile,
   buildTileDragPayload,
 }) {
+  const columns = useMemo(
+    () => splitByWeight(entries, (entry) => Math.min(entry.assigned, 5), FLOW_ZONE_COLUMNS),
+    [entries]
+  )
   return (
     <div className={`plan-builder-flow-zone plan-builder-flow-zone--${tone}`} onDragOver={onDragOver} onDrop={onDrop}>
       <div className="plan-builder-flow-zone-title">
@@ -264,19 +292,23 @@ function FlowZoneStacks({
             onSelectRect={onSelectRect}
             onClearSelection={onClearSelection}
           >
-            {entries.map(({ card, assigned }) => (
-              <CardStack
-                key={`${card.id ?? card.name}-${card.zone}`}
-                cardName={card.name}
-                quantity={assigned}
-                imageUrl={imageUrls[card.name]}
-                imageLoading={imageUrls[card.name] === undefined}
-                isSelected={(i) => isSelectedTile(card.name, i)}
-                onToggleTile={(i) => onToggleTile(card.name, i)}
-                buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
-                onActivate={() => onActivateCard?.(card)}
-                onEnsureImage={onEnsureImage}
-              />
+            {columns.map((columnEntries, columnIndex) => (
+              <div className="plan-builder-flow-column" key={columnIndex}>
+                {columnEntries.map(({ card, assigned }) => (
+                  <CardStack
+                    key={`${card.id ?? card.name}-${card.zone}`}
+                    cardName={card.name}
+                    quantity={assigned}
+                    imageUrl={imageUrls[card.name]}
+                    imageLoading={imageUrls[card.name] === undefined}
+                    isSelected={(i) => isSelectedTile(card.name, i)}
+                    onToggleTile={(i) => onToggleTile(card.name, i)}
+                    buildTileDragPayload={(i) => buildTileDragPayload(card, i)}
+                    onActivate={() => onActivateCard?.(card)}
+                    onEnsureImage={onEnsureImage}
+                  />
+                ))}
+              </div>
             ))}
           </SelectableSurface>
         )}

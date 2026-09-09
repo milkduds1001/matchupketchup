@@ -34,15 +34,16 @@ export default function CardStack({
   onActivate,
   buildTileDragPayload,
   onEnsureImage,
-  compact = false,
+  size = 'default', // 'compact' | 'default' | 'large'
 }) {
   const name = String(cardName || '').trim()
   const trueCount = Math.min(MAX_RENDERED_COPIES, Math.max(0, Math.floor(Number(quantity) || 0)))
   if (!name || trueCount <= 0) return null
   const count = Math.min(trueCount, CASCADE_VISUAL_CAP)
+  const sizeClass = size === 'default' ? '' : ` card-row-stack--${size}`
 
   return (
-    <div className={`card-row-stack${compact ? ' card-row-stack--compact' : ''}`}>
+    <div className={`card-row-stack${sizeClass}`}>
       {Array.from({ length: count }, (_, i) => {
         const selected = Boolean(isSelected?.(i))
         const isLast = i === count - 1

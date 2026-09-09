@@ -140,3 +140,9 @@
   --card-h: 148px;
   --card-peek: 13px;
 }
+
+.card-row-stack--large {
+  --card-w: 190px;
+  --card-h: 265px;
+  --card-peek: 24px;
+}
