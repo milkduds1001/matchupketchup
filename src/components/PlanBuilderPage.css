@@ -187,11 +187,16 @@
    doesn't fit a tile's fixed size scrolls inside it (see the flex/overflow rules under each one)
    rather than growing the tile. ---- */
 
+/* 3-column grid (Main deck / Outs+Ins / Sideboard) — each column's own width comes from its
+   child (.plan-builder-board-main/-mid/-sideboard below), not a track size here, so this doesn't
+   duplicate those numbers. Grid (not flex-wrap) guarantees the three columns always share the same
+   row-start line instead of only doing so until something's wide enough to wrap. */
 .plan-builder-board {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  justify-content: start;
+  align-items: start;
+  gap: 16px;
 }
 
 .plan-builder-board-main,
@@ -320,7 +325,7 @@
 .plan-builder-board-mid {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 16px;
 }
 
 .plan-builder-flow-zone {
