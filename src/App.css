@@ -2068,6 +2068,15 @@
   display: none;
 }
 
+/* Print-only render of the matchup matrix (MatchupTable) — screen: hidden. Only shown via the
+   `body.print-mode-matrix .matchup-matrix-print-only { display: block }` override below, which
+   only takes effect inside @media print. This base rule was missing before — harmless while it
+   sat below the tall on-screen MatchupCardBoard, but exposed once that board was archived in
+   favor of Sideboard Builder (see App.jsx's Step 4 section). */
+.matchup-matrix-print-only {
+  display: none;
+}
+
 /*
  * Print jobs: matrix + sideboard PDFs; body gets print-mode-matrix | print-mode-sideboard.
  * @page size is set in JS (printPage.js) so matrix can use landscape.

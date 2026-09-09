@@ -26,7 +26,6 @@ import HomePage from './components/HomePage.jsx'
 import TipJarPage from './components/TipJarPage.jsx'
 import DeckUpload from './components/DeckUpload.jsx'
 import MatchupTable from './components/MatchupTable.jsx'
-import MatchupCardBoard from './components/MatchupCardBoard.jsx'
 import PlanBuilderPage from './components/PlanBuilderPage.jsx'
 import SideboardGuide from './components/SideboardGuide.jsx'
 import MetagameGridEditor from './components/MetagameGridEditor.jsx'
@@ -1345,8 +1344,10 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
       <main className="main-content">
         {/*
           Card-hover preview tooltip, portaled to the browser body so it always renders above
-          everything else. Used only by Step 4 (MatchupCardBoard) — the Sideboard Builder
-          (PlanBuilderPage) has its own fixed, non-cursor-following preview panel instead.
+          everything else. Wired to MatchupTable's onCardHover/Move/Leave props, but MatchupTable
+          is print-only (hidden on screen) since the old on-screen board (MatchupCardBoard) that
+          used to trigger this was archived — in practice this tooltip no longer fires. Left as-is
+          for now rather than also unwinding its state/handlers in the same pass.
         */}
         {typeof document !== 'undefined' &&
           matchupCursorPreviewStyle &&
@@ -2184,10 +2185,13 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
         )}
 
         {/*
-          Step 4 (matchup board) + Step 5 (sideboard guide), once a decklist
-          and metagame are both selected. MatchupCardBoard is the interactive
-          on-screen editor; MatchupTable renders the same data again but only
-          for print (`.matchup-matrix-print-only`, hidden on screen via CSS).
+          Step 4 (matchup print prep) + Step 5 (sideboard guide), once a decklist and metagame
+          are both selected. Editing the actual out/in matchup values now happens in Sideboard
+          Builder (top nav, PlanBuilderPage.jsx) — this section keeps the print/export controls
+          and the print-only MatchupTable render (`.matchup-matrix-print-only`, hidden on screen
+          via CSS) that read that same matchupValues data. The old on-screen board this section
+          used to render (MatchupCardBoard.jsx + CardPile.jsx) is archived under src/archive/,
+          superseded by Sideboard Builder rather than deleted.
         */}
         {!manageView && pairSelected && (
           <>
@@ -2280,20 +2284,15 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
                   </div>
                 </div>
               </div>
-              <MatchupCardBoard
-                cards={safeCards}
-                archetypes={displayedArchetypes}
-                values={matchupValues}
-                cardTypes={cardTypes}
-                cardManaValues={cardManaValues}
-                hideLands={hideLands}
-                imageUrls={deckCardPreviewUrls}
-                onChangeCell={handleMatchupChange}
-                onEnsureImage={ensureDeckCardPreview}
-                onCardHover={handleMatchupCardHover}
-                onCardMove={handleMatchupCardMove}
-                onCardLeave={handleMatchupCardLeave}
-              />
+              <div className="matchup-step4-editor-notice placeholder">
+                <p>
+                  Build your sideboard plan in <strong>Sideboard Builder</strong> — it edits the
+                  same matchup data these print exports use.
+                </p>
+                <button type="button" className="btn-print matchup-toolbar-btn" onClick={goPlanBuilderNav}>
+                  Open Sideboard Builder
+                </button>
+              </div>
               <div className="matchup-matrix-print-only" aria-hidden="true">
                 <MatchupTable
                   cards={safeCards}
