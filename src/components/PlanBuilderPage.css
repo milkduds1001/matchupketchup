@@ -181,45 +181,43 @@
   pointer-events: none;
 }
 
-/* ---- The board: one bordered panel split into three areas — Main deck | Outs/Ins | Sideboard —
-   with internal dividers instead of three separate floating boxes with gaps between them. Each
-   area is pinned to a fixed column count (see below) so its shape stays predictable regardless of
-   deck size, instead of stretching/scrolling unpredictably. overflow: hidden keeps each area's own
-   background color (see the silver/gold rules below) clipped to the board's rounded corners. ---- */
+/* ---- The board: four square, fixed-size tiles (Main deck, Outs, Ins, Sideboard) instead of one
+   shared panel — each the same neutral background, so nothing but size distinguishes them. Main
+   deck is a bigger square (it holds more); Outs/Ins/Sideboard match each other. Content that
+   doesn't fit a tile's fixed size scrolls inside it (see the flex/overflow rules under each one)
+   rather than growing the tile. ---- */
 
 .plan-builder-board {
-  display: grid;
-  grid-template-columns: 5fr 2fr 1.4fr;
-  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.plan-builder-board-main,
+.plan-builder-board-sideboard,
+.plan-builder-flow-zone {
+  background: var(--color-surface, #efe6d3);
   border: 1px solid var(--color-border, #d6c7a8);
   border-radius: var(--radius-lg, 14px);
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(43, 43, 43, 0.06));
-  overflow: hidden;
 }
 
-.plan-builder-board > * {
+.plan-builder-board-main,
+.plan-builder-board-sideboard {
+  display: flex;
+  flex-direction: column;
   padding: 0.75rem;
-  border-left: 1px solid var(--color-border, #d6c7a8);
 }
 
-.plan-builder-board > *:first-child {
-  border-left: none;
-}
-
-/* Main deck/Outs share one silver background (cards' "deck" home); Sideboard/Ins share one light
-   gold background (cards' "sideboard" home) — independent of the red/green out/in accent already
-   on the flow zones' border and arrow. */
 .plan-builder-board-main {
-  background: #e2e5e9;
-  overflow-x: auto;
-}
-
-.plan-builder-board-mid {
-  background: var(--color-surface, #efe6d3);
+  width: 640px;
+  height: 640px;
 }
 
 .plan-builder-board-sideboard {
-  background: var(--color-secondary-soft, #f4e2b8);
+  width: 320px;
+  height: 320px;
 }
 
 .plan-builder-col-title {
@@ -233,13 +231,16 @@
 /* ---- Main deck: fixed at 6 columns via CSS multi-column layout instead of one column per mana
    value — once all 6 are in use, a mana value short enough to fit below a neighbor stacks there
    (break-inside: avoid keeps any one mana value's cards from being split across the break) rather
-   than opening a 7th column. min-width plus overflow-x on the section (not here) is the fallback
-   for a viewport too narrow to fit 6 comfortably — it scrolls instead of squeezing them. ---- */
+   than opening a 7th column. The 6 columns need more room than the deck's fixed-size box always
+   has, so this scrolls (both axes) inside that box instead of growing it or squeezing columns. ---- */
 
 .plan-builder-mana-columns {
+  flex: 1;
+  min-height: 0;
   column-count: 6;
   column-gap: 0.85rem;
   min-width: 970px;
+  overflow: auto;
 }
 
 .plan-builder-mana-column {
@@ -271,7 +272,14 @@
   width: 100%;
 }
 
-/* ---- Sideboard: one cascading column, same visual language as a mana column ---- */
+/* ---- Sideboard: one cascading column, same visual language as a mana column. The surface fills
+   the rest of the fixed-size box below the title and scrolls if 15 large cards don't all fit. ---- */
+
+.plan-builder-sideboard-surface {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 
 .plan-builder-sideboard-stacks {
   display: flex;
@@ -287,35 +295,32 @@
   color: var(--color-text-muted, #5a5a5a);
 }
 
-/* ---- Outs/Ins: its own middle column, between the main deck and the sideboard. Outs (top)
-   points right toward the sideboard cards are leaving to; Ins (bottom) points left toward the
-   main deck cards are joining. Both are a fixed height (not sized to content) — the body scrolls
-   internally in the rare case a plan has more cards than that height comfortably fits. ---- */
+/* ---- Outs/Ins: their own square, fixed-size tiles, stacked between the main deck and the
+   sideboard. Outs (top) points right toward the sideboard cards are leaving to; Ins (bottom)
+   points left toward the main deck cards are joining. Same plain background/border as the other
+   two tiles (see the shared rule above) — only the border tint stays red/green as a quick "which
+   is which" cue. Content scrolls internally (.plan-builder-flow-zone-body) if it overflows. ---- */
 
 .plan-builder-board-mid {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .plan-builder-flow-zone {
-  height: 360px;
+  width: 320px;
+  height: 320px;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-md, 10px);
-  border: 2px dashed color-mix(in srgb, var(--color-border, #d6c7a8) 90%, transparent);
-  background: color-mix(in srgb, var(--color-card, #e4d7bd) 45%, var(--color-surface, #efe6d3));
   padding: 0.5rem 0.75rem 0.65rem;
 }
 
 .plan-builder-flow-zone--in {
   border-color: color-mix(in srgb, var(--status-success, #2e7d32) 35%, var(--color-border, #d6c7a8));
-  background: var(--color-secondary-soft, #f4e2b8);
 }
 
 .plan-builder-flow-zone--out {
   border-color: color-mix(in srgb, var(--color-primary, #c62828) 35%, var(--color-border, #d6c7a8));
-  background: #e2e5e9;
 }
 
 .plan-builder-flow-zone-title {
@@ -422,21 +427,6 @@
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
-}
-
-@media (max-width: 900px) {
-  .plan-builder-board {
-    grid-template-columns: 1fr;
-  }
-
-  .plan-builder-board > * {
-    border-left: none;
-    border-top: 1px solid var(--color-border, #d6c7a8);
-  }
-
-  .plan-builder-board > *:first-child {
-    border-top: none;
-  }
 }
 
 @media (max-width: 640px) {
