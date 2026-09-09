@@ -181,19 +181,24 @@
   pointer-events: none;
 }
 
-/* ---- The board: four square, fixed-size tiles (Main deck, Outs, Ins, Sideboard) instead of one
-   shared panel — each the same neutral background, so nothing but size distinguishes them. Main
-   deck is a bigger square (it holds more); Outs/Ins/Sideboard match each other. Content that
-   doesn't fit a tile's fixed size scrolls inside it (see the flex/overflow rules under each one)
-   rather than growing the tile. ---- */
+/* ---- The board: four tiles (Main deck, Outs, Ins, Sideboard) instead of one shared panel — each
+   the same neutral background, so nothing but size distinguishes them. Main deck fills whatever
+   width is left over (see the grid rule below); Outs/Ins are fixed squares; Sideboard is a narrow
+   fixed-width column. All three columns share one height so their bottoms align. Content that
+   doesn't fit a tile's size scrolls inside it (see the flex/overflow rules under each one) rather
+   than growing the tile. ---- */
 
-/* 3-column grid (Main deck / Outs+Ins / Sideboard) — each column's own width comes from its
-   child (.plan-builder-board-main/-mid/-sideboard below), not a track size here, so this doesn't
-   duplicate those numbers. Grid (not flex-wrap) guarantees the three columns always share the same
-   row-start line instead of only doing so until something's wide enough to wrap. */
+/* 3-column grid (Main deck / Outs+Ins / Sideboard). Column 1 is 1fr — Main deck fills whatever
+   width is left over after the other two columns' own (fixed) widths and the gaps, so its left
+   edge and the Sideboard column's right edge always span the same full width as the toolbar above
+   (an ordinary sibling of this grid, so it already fills 100% of the page's content width) without
+   a hardcoded pixel value that would only be correct at one viewport width. Columns 2/3 stay
+   "auto", sized from their own child's width (.plan-builder-board-mid / -sideboard below). Grid
+   (not flex-wrap) guarantees the three columns always share the same row-start line instead of
+   only doing so until something's wide enough to wrap. */
 .plan-builder-board {
   display: grid;
-  grid-template-columns: auto auto auto;
+  grid-template-columns: 1fr auto auto;
   justify-content: start;
   align-items: start;
   gap: 16px;
@@ -221,16 +226,17 @@
 }
 
 .plan-builder-board-main {
-  width: 640px;
-  height: 640px;
+  /* No explicit width — fills its 1fr grid track (see .plan-builder-board above). Height matches
+     the Outs+Ins mid column's total height (400 + 16 gap + 400) so columns 1/2/3 all end at the
+     same Y. */
+  height: 816px;
 }
 
 .plan-builder-board-sideboard {
-  /* Taller than it is wide — matches Outs/Ins width, but a 15-card sideboard cascading at "large"
-     card size needs real vertical room to show every card without scrolling (measured worst case:
-     14 distinct singles ~= 600px of cascade + padding/title). */
-  width: 400px;
-  height: 720px;
+  /* Half the previous width; height matches the mid column's total height (400 + 16 gap + 400) so
+     columns 1/2/3 all end at the same Y. */
+  width: 200px;
+  height: 816px;
 }
 
 .plan-builder-col-title {
