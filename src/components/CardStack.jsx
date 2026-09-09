@@ -34,9 +34,6 @@ export default function CardStack({
   onActivate,
   buildTileDragPayload,
   onEnsureImage,
-  onHover,
-  onMove,
-  onLeave,
   compact = false,
 }) {
   const name = String(cardName || '').trim()
@@ -86,18 +83,8 @@ export default function CardStack({
                 else onActivate?.()
               }
             }}
-            onMouseEnter={(e) => {
-              onEnsureImage?.(name)
-              onHover?.(name, e)
-            }}
-            onMouseMove={(e) => onMove?.(e)}
-            onFocus={(e) => {
-              onEnsureImage?.(name)
-              const r = e.currentTarget.getBoundingClientRect()
-              onHover?.(name, { clientX: r.right + 8, clientY: r.top + 4 })
-            }}
-            onMouseLeave={() => onLeave?.()}
-            onBlur={() => onLeave?.()}
+            onMouseEnter={() => onEnsureImage?.(name)}
+            onFocus={() => onEnsureImage?.(name)}
           >
             <button
               type="button"

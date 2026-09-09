@@ -188,7 +188,7 @@
 
 .plan-builder-board {
   display: grid;
-  grid-template-columns: 3fr 1.2fr 1.2fr;
+  grid-template-columns: 3fr 2fr 1fr;
   align-items: start;
   background: var(--color-surface, #efe6d3);
   border: 1px solid var(--color-border, #d6c7a8);
@@ -213,22 +213,16 @@
   font-weight: 400;
 }
 
-/* ---- Main deck: labeled mana-value columns that wrap into a grid (instead of needing horizontal
-   scroll) once they don't fit in one row, plus the hover-preview panel running alongside them. ---- */
-
-.plan-builder-main-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
-}
+/* ---- Main deck: labeled mana-value columns, all in one row that scrolls horizontally instead of
+   wrapping — every mana value stays side by side so the curve reads left to right in order. ---- */
 
 .plan-builder-mana-columns {
-  flex: 1;
-  min-width: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 0.6rem 0.85rem;
+  gap: 0.85rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
 }
 
 .plan-builder-mana-column {
@@ -236,6 +230,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
+  flex-shrink: 0;
   width: 150px;
 }
 
@@ -275,71 +270,10 @@
   color: var(--color-text-muted, #5a5a5a);
 }
 
-/* ---- Hover-preview panel: runs alongside the mana columns (see .plan-builder-main-body) instead
-   of floating — a fixed/floating panel risks landing on top of the Outs/Ins column or the
-   sideboard, both of which can end up anywhere along the bottom depending on how tall the deck's
-   columns turn out to be. ---- */
-
-.plan-builder-preview-panel {
-  position: sticky;
-  top: 1rem;
-  align-self: flex-start;
-  flex-shrink: 0;
-  width: 140px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.6rem;
-  background: var(--color-card, #e4d7bd);
-  border: 1px solid var(--color-border, #d6c7a8);
-  border-radius: var(--radius-lg, 14px);
-  box-shadow: var(--shadow-sm, 0 2px 8px rgba(43, 43, 43, 0.06));
-}
-
-.plan-builder-preview-name {
-  font-family: var(--font-display, 'Bebas Neue', sans-serif);
-  font-size: 0.92rem;
-  letter-spacing: 0.02em;
-  line-height: 1.15;
-}
-
-.plan-builder-preview-type {
-  margin-top: -0.25rem;
-  font-size: 0.7rem;
-  color: var(--color-text-muted, #5a5a5a);
-}
-
-.plan-builder-preview-image {
-  display: block;
-  width: 100%;
-  aspect-ratio: 63 / 88;
-  border-radius: 4.4% / 3.2%;
-  object-fit: cover;
-  box-shadow: 0 4px 14px rgba(43, 43, 43, 0.22);
-}
-
-.plan-builder-preview-image--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 0.6rem;
-  font-size: 0.72rem;
-  color: var(--color-text-muted, #5a5a5a);
-  background: color-mix(in srgb, var(--color-card, #e4d7bd) 55%, var(--color-surface, #efe6d3));
-  border: 1px dashed var(--color-border, #d6c7a8);
-}
-
-.plan-builder-preview-empty {
-  margin: 0;
-  font-size: 0.76rem;
-  color: var(--color-text-muted, #5a5a5a);
-}
-
 /* ---- Outs/Ins: its own middle column, between the main deck and the sideboard. Outs (top)
    points right toward the sideboard cards are leaving to; Ins (bottom) points left toward the
-   main deck cards are joining. Neither scrolls internally or has a hardcoded height — each sizes
-   to its own content. ---- */
+   main deck cards are joining. Both are a fixed height (not sized to content) — the body scrolls
+   internally in the rare case a plan has more cards than that height comfortably fits. ---- */
 
 .plan-builder-board-mid {
   display: flex;
@@ -348,6 +282,9 @@
 }
 
 .plan-builder-flow-zone {
+  height: 360px;
+  display: flex;
+  flex-direction: column;
   border-radius: var(--radius-md, 10px);
   border: 2px dashed color-mix(in srgb, var(--color-border, #d6c7a8) 90%, transparent);
   background: color-mix(in srgb, var(--color-card, #e4d7bd) 45%, var(--color-surface, #efe6d3));
@@ -398,6 +335,12 @@
   font-weight: 800;
   font-size: 1.15rem;
   line-height: 1;
+}
+
+.plan-builder-flow-zone-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .plan-builder-flow-zone-empty {
@@ -470,21 +413,6 @@
 
   .plan-builder-board > *:first-child {
     border-top: none;
-  }
-
-  .plan-builder-main-body {
-    flex-direction: column;
-  }
-
-  .plan-builder-preview-panel {
-    position: static;
-    width: 100%;
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .plan-builder-preview-image {
-    width: 70px;
   }
 }
 
