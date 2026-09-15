@@ -228,28 +228,45 @@ function SideboardStacks({
 }
 
 /**
- * Distributes already-ordered `groups` across `columnCount` columns without ever reordering them:
- * walks the list once, left to right, moving on to the next column once the current one's
- * accumulated weight would exceed a fair per-column share. Used for Main deck's mana-value
- * columns, where the whole point is that they read in a fixed (ascending mana value) order — a
- * weight-first packer would instead reorder columns by size, which is what used to happen here.
+ * Distributes already-ordered `groups` across up to `columnCount` columns without ever reordering
+ * them. Used for Main deck's mana-value columns, where the whole point is that they read in a
+ * fixed (ascending mana value) order — a weight-first packer would instead reorder columns by
+ * size, which is what used to happen here.
+ *
+ * Conservative about doubling up: for as long as there are no more groups than columns, every
+ * group gets its own column, full stop — no group ever shares a column just because a weight
+ * formula decided an earlier column was "full enough" while five more columns sat empty (the
+ * previous approach's bug). Only once there are genuinely more groups than columns does merging
+ * start, and even then each column's fair share is recomputed from what's actually left after each
+ * one closes, so the *last* column doesn't end up absorbing a big leftover pile on its own.
  */
 function packInOrder(groups, weightFn, columnCount) {
-  const totalWeight = groups.reduce((sum, g) => sum + weightFn(g), 0)
-  const target = totalWeight / columnCount || 1
-  const columns = []
-  let current = []
-  let currentWeight = 0
-  for (const group of groups) {
-    if (current.length > 0 && currentWeight >= target && columns.length < columnCount - 1) {
-      columns.push(current)
-      current = []
-      currentWeight = 0
-    }
-    current.push(group)
-    currentWeight += weightFn(group)
+  if (groups.length <= columnCount) {
+    return groups.map((group) => [group])
   }
-  if (current.length > 0) columns.push(current)
+  const columns = []
+  let remaining = groups
+  let columnsLeft = columnCount
+  while (columnsLeft > 0) {
+    if (columnsLeft === 1) {
+      columns.push(remaining)
+      break
+    }
+    const target = remaining.reduce((sum, g) => sum + weightFn(g), 0) / columnsLeft
+    const current = [remaining[0]]
+    let currentWeight = weightFn(remaining[0])
+    let i = 1
+    while (i < remaining.length) {
+      const groupsLeftIfStopNow = remaining.length - i
+      if (currentWeight >= target && groupsLeftIfStopNow >= columnsLeft - 1) break
+      current.push(remaining[i])
+      currentWeight += weightFn(remaining[i])
+      i++
+    }
+    columns.push(current)
+    remaining = remaining.slice(i)
+    columnsLeft--
+  }
   return columns
 }
 

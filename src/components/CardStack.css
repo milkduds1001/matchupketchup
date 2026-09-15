@@ -1,7 +1,9 @@
 .card-row-stack {
-  --card-w: 140px;
-  --card-h: 196px;
-  --card-peek: 18px;
+  /* ~30% larger than the original 140/196/18 — same aspect ratio and peek-to-height proportion,
+     just bigger. */
+  --card-w: 182px;
+  --card-h: 255px;
+  --card-peek: 23px;
   display: flex;
   flex-direction: column;
   width: var(--card-w);
