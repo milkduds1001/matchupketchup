@@ -141,44 +141,10 @@
   color: var(--status-success, #2e7d32);
 }
 
-.plan-builder-selection-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.6rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-primary, #c62828) 14%, var(--color-surface, #efe6d3));
-  border: 1px solid color-mix(in srgb, var(--color-primary, #c62828) 35%, var(--color-border, #d6c7a8));
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--color-primary, #c62828);
-}
-
-.plan-builder-selection-clear {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: 0;
-  font: inherit;
-  font-weight: 700;
-  text-decoration: underline;
-  color: inherit;
-  cursor: pointer;
-}
-
 .plan-builder-hint {
   margin: -0.5rem 0 0;
   font-size: 0.82rem;
   color: var(--color-text-muted, #5a5a5a);
-}
-
-/* Rubber-band selection box, portaled to document.body (position: fixed, viewport coords) */
-.plan-builder-marquee {
-  position: fixed;
-  z-index: 3000;
-  border: 1.5px solid var(--color-primary, #c62828);
-  background: color-mix(in srgb, var(--color-primary, #c62828) 12%, transparent);
-  pointer-events: none;
 }
 
 /* ---- The board: four tiles (Main deck, Outs, Ins, Sideboard) instead of one shared panel — each
