@@ -138,12 +138,16 @@ function packInOrder(groups, weightFn, columnCount) {
       break
     }
     const target = remaining.reduce((sum, g) => sum + weightFn(g), 0) / columnsLeft
+    // However many this column takes, at least 1 must be left for each of the columnsLeft - 1
+    // columns still to come — a hard cap, not just a preference, so a weight target that's never
+    // quite met can't make this column swallow everything that's left (that was the bug: the old
+    // "is it still safe to stop" check only got stricter as more items were taken, so once it
+    // failed once it could never pass again, and the loop ran off the end of `remaining`).
+    const maxTake = remaining.length - (columnsLeft - 1)
     const current = [remaining[0]]
     let currentWeight = weightFn(remaining[0])
     let i = 1
-    while (i < remaining.length) {
-      const groupsLeftIfStopNow = remaining.length - i
-      if (currentWeight >= target && groupsLeftIfStopNow >= columnsLeft - 1) break
+    while (i < maxTake && currentWeight < target) {
       current.push(remaining[i])
       currentWeight += weightFn(remaining[i])
       i++
