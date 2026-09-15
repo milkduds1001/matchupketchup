@@ -48,7 +48,13 @@ import {
 } from './utils/syncGoldfishDefaults.js'
 import { setPrintPageLayout } from './utils/printPage.js'
 import { copyDeckAndOpenDecklistOrg } from './utils/decklistOrgExport.js'
-import { fetchCardMetadata, fetchCardImageUrlByName, pickCardImageUrl, searchCardsByName } from './utils/scryfall.js'
+import {
+  fetchCardMetadata,
+  fetchCardImageUrlByName,
+  fetchCardImageUrlsByNames,
+  pickCardImageUrl,
+  searchCardsByName,
+} from './utils/scryfall.js'
 import logo from './assets/matchupketchup_logo_mark.png'
 import './App.css'
 
@@ -277,6 +283,9 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
   const [deckSearchResults, setDeckSearchResults] = useState([])
   const [deckSearchLoading, setDeckSearchLoading] = useState(false)
   const [deckCardPreviewUrls, setDeckCardPreviewUrls] = useState({})
+  const deckCardPreviewUrlsRef = useRef(deckCardPreviewUrls)
+  deckCardPreviewUrlsRef.current = deckCardPreviewUrls
+  const imageFetchInFlightRef = useRef(new Set())
   const [activePreviewCardName, setActivePreviewCardName] = useState('')
   /** Client coordinates for matchup matrix card preview tooltip (fixed to viewport). */
   const [matchupPreviewPoint, setMatchupPreviewPoint] = useState(null)
@@ -897,11 +906,45 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
         return { ...prev, [name]: cmc }
       })
       setDeckCardPreviewUrls((prev) => {
-        if (prev[name] !== undefined) return prev
-        return { ...prev, [name]: pickCardImageUrl(meta) }
+        const url = pickCardImageUrl(meta)
+        if (!url || prev[name]) return prev
+        return { ...prev, [name]: url }
       })
     })
     return () => { cancelled = true }
+  }, [safeCards])
+
+  /**
+   * Card art is independent of type/legality/CMC caches. Saved decks already have that
+   * metadata, so the effect above often no-ops — and the board used to wait for hover
+   * (then fire a named lookup per card, which Scryfall rate-limits). Prefetch every
+   * missing image in bulk whenever the loaded deck changes.
+   */
+  useEffect(() => {
+    if (safeCards.length === 0) return
+    const names = [...new Set(safeCards.map((c) => c?.name).filter(Boolean))]
+      .map((n) => String(n).trim())
+      .filter((name) => !deckCardPreviewUrlsRef.current[name])
+    if (names.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      const urls = await fetchCardImageUrlsByNames(names)
+      if (cancelled) return
+      setDeckCardPreviewUrls((prev) => {
+        const next = { ...prev }
+        let changed = false
+        for (const name of names) {
+          const url = urls[name]
+          if (!url || prev[name]) continue
+          next[name] = url
+          changed = true
+        }
+        return changed ? next : prev
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [safeCards])
 
   /**
@@ -1123,13 +1166,20 @@ function Dashboard({ onGoHome, onNavigateTipJar }) {
     setDeckSearchLoading(false)
   }
 
-  /** Fetch and cache a card's preview image the first time it's hovered; `undefined` means "not fetched yet", `null` means "fetched, no image available" — both are distinct from a real URL. */
+  /** Fetch and cache a card's preview image. Skip names that already have a URL; never cache a failed lookup so it can retry. */
   async function ensureDeckCardPreview(cardName) {
     const name = String(cardName || '').trim()
     if (!name) return
-    if (deckCardPreviewUrls[name] !== undefined) return
-    const imageUrl = await fetchCardImageUrlByName(name)
-    setDeckCardPreviewUrls((prev) => ({ ...prev, [name]: imageUrl }))
+    if (deckCardPreviewUrlsRef.current[name]) return
+    if (imageFetchInFlightRef.current.has(name)) return
+    imageFetchInFlightRef.current.add(name)
+    try {
+      const imageUrl = await fetchCardImageUrlByName(name)
+      if (!imageUrl) return
+      setDeckCardPreviewUrls((prev) => (prev[name] ? prev : { ...prev, [name]: imageUrl }))
+    } finally {
+      imageFetchInFlightRef.current.delete(name)
+    }
   }
 
   /** Step 4's cursor-following card preview: track which card + where, then lazily fetch its image via ensureDeckCardPreview. */
