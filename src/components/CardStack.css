@@ -1,10 +1,14 @@
 .card-row-stack {
-  /* Scaled down ~10% from 182/255/23 so Main Deck's 5 mana-value columns fit its box without
-     clipping — same aspect ratio and peek-to-height proportion, just a bit smaller. Same constants
-     everywhere (Main Deck/Outs/Ins/Sideboard), so this one change is the size everywhere. */
-  --card-w: 164px;
-  --card-h: 230px;
-  --card-peek: 21px;
+  /* --plan-card-w is set on .plan-builder-page's root (PlanBuilderPage.jsx), computed from
+     however much width is actually available for Main Deck's 5 mana-value columns — not a fixed
+     guess, since a fixed size that fits one screen doesn't necessarily fit another. Height/peek
+     stay proportional to whatever that computed width ends up being (native card ratio ~1.4,
+     peek ~12.8% of width). The 164px fallback only matters before that effect runs, or outside
+     PlanBuilderPage entirely. Same variable everywhere (Main Deck/Outs/Ins/Sideboard), so card
+     size stays consistent across all four. */
+  --card-w: var(--plan-card-w, 164px);
+  --card-h: calc(var(--card-w) * 1.4);
+  --card-peek: calc(var(--card-w) * 0.128);
   display: flex;
   flex-direction: column;
   width: var(--card-w);

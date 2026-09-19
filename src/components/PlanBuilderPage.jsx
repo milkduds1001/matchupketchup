@@ -19,6 +19,16 @@
  * card a stable column via a persisted insertion rank (ranksForNames) rather than recomputing from
  * current counts, so cards don't jump between columns as you click cards in and out.
  *
+ * Card size: NOT a fixed pixel value. A ResizeObserver on the Main deck's mana-columns row
+ * measures how much width is actually available and computes the largest card width that still
+ * lets all MAIN_DECK_COLUMNS fit without horizontal scrolling, clamped to [MIN_CARD_WIDTH,
+ * DEFAULT_CARD_WIDTH] — below that floor it stops shrinking and lets the row scroll instead of
+ * making cards illegibly small. That one computed width (`--plan-card-w`, on the page root, so
+ * CardStack.css inherits it everywhere — Main deck/Outs/Ins/Sideboard always share one size) also
+ * drives the Outs/Ins and Sideboard tile widths, so everything scales together. Trying to hand-pick
+ * one fixed size that "just fits" only works for the one screen width it was tested at — this
+ * reacts to whatever's actually available instead of needing to know that number in advance.
+ *
  * Selection: none — this used to support shift/ctrl-click and rubber-band multi-select (drag a
  * whole batch of cards at once), but that's been stripped out (archived in git history, not
  * deleted outright — see the commit that removed it) in favor of a simpler one-at-a-time
@@ -32,7 +42,7 @@
  * true. Local drag/drop helpers live in utils/cardDragPayload.js (a copy independent of
  * MatchupCardBoard.jsx/CardPile.jsx's own versions, so that file didn't need to change for this).
  */
-import { useMemo, useState, useCallback, useRef } from 'react'
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import CardStack from './CardStack.jsx'
 import './PlanBuilderPage.css'
 import {
@@ -188,6 +198,18 @@ function ranksForNames(ranksRef, scopeKey, names) {
 const FLOW_ZONE_COLUMNS = 2
 const MAIN_DECK_COLUMNS = 5
 
+// Card sizing (see the module doc comment above): these mirror the constants baked into
+// PlanBuilderPage.css's fallback values (--plan-card-w default, the gap on
+// .plan-builder-mana-columns, and the "breathing room" .plan-builder-mana-super-column adds around
+// a card) — keep them in sync if either side changes.
+const DEFAULT_CARD_WIDTH = 164
+const MIN_CARD_WIDTH = 112
+const MANA_COLUMN_GAP = 12.6 // 0.7rem
+const MANA_COLUMN_PADDING = 16 // extra width .plan-builder-mana-super-column adds around a card
+const FLOW_ZONE_GAP = 11 // 0.6rem, between the 2 Outs/Ins columns
+const FLOW_ZONE_PADDING = 27 // 0.75rem each side
+const SIDEBOARD_PADDING = 14 // 0.4rem each side
+
 /**
  * "Outs" (top, pointing right toward the sideboard cards are leaving to) or "Ins" (bottom,
  * pointing left toward the main deck cards are joining) — stacked in their own middle column
@@ -273,6 +295,32 @@ export default function PlanBuilderPage({
   const [selectedArchName, setSelectedArchName] = useState(() => safeArchetypes[0]?.name ?? '')
   const [selectedRole, setSelectedRole] = useState('play')
   const notesFieldRef = useRef(null)
+
+  // Card width that makes MAIN_DECK_COLUMNS fit the mana-columns row without horizontal scroll —
+  // recomputed whenever that row's available width changes (window resize, sidebar toggling,
+  // etc.), not just once on mount. See the module doc comment for why this is measured rather
+  // than a fixed guess.
+  const manaColumnsRef = useRef(null)
+  const [cardWidth, setCardWidth] = useState(DEFAULT_CARD_WIDTH)
+
+  useEffect(() => {
+    const el = manaColumnsRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const recompute = () => {
+      const available = el.clientWidth
+      if (!available) return
+      const ideal =
+        (available - (MAIN_DECK_COLUMNS - 1) * MANA_COLUMN_GAP) / MAIN_DECK_COLUMNS - MANA_COLUMN_PADDING
+      setCardWidth(Math.max(MIN_CARD_WIDTH, Math.min(DEFAULT_CARD_WIDTH, Math.floor(ideal))))
+    }
+    recompute()
+    const observer = new ResizeObserver(recompute)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const flowZoneWidth = 2 * cardWidth + FLOW_ZONE_GAP + FLOW_ZONE_PADDING
+  const sideboardWidth = cardWidth + SIDEBOARD_PADDING
 
   // Fall back to the first archetype if the selected one no longer exists (e.g. renamed/deleted in Step 3).
   const activeArchName = safeArchetypes.some((a) => a.name === selectedArchName)
@@ -435,7 +483,14 @@ export default function PlanBuilderPage({
   }
 
   return (
-    <div className="plan-builder-page">
+    <div
+      className="plan-builder-page"
+      style={{
+        '--plan-card-w': `${cardWidth}px`,
+        '--plan-flowzone-w': `${flowZoneWidth}px`,
+        '--plan-sideboard-w': `${sideboardWidth}px`,
+      }}
+    >
       <div className="plan-builder-toolbar">
         <div className="plan-builder-toolbar-deck">
           <span className="plan-builder-toolbar-deck-name">{decklist?.name ?? '—'}</span>
@@ -507,7 +562,7 @@ export default function PlanBuilderPage({
           onDrop={handleDropReturnToMain}
         >
           <h3 className="plan-builder-col-title">Main deck</h3>
-          <div className="plan-builder-mana-columns">
+          <div className="plan-builder-mana-columns" ref={manaColumnsRef}>
             {mainDeckColumns.map((groupsInColumn, columnIndex) => (
               <div className="plan-builder-mana-super-column" key={columnIndex}>
                 {groupsInColumn.map((group) => (

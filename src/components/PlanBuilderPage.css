@@ -199,11 +199,13 @@
 }
 
 .plan-builder-board-sideboard {
-  /* Width matches the smaller card size (see CardStack.css) — one 164px card plus padding. Height
-     matches the mid column's total height (400 + 16 gap + 400) so columns 1/2/3 all end at the
-     same Y. Tighter horizontal padding than the shared 0.75rem above — needed so the card still
-     fits inside this narrow box without its edge clipping. */
-  width: 180px;
+  /* Width tracks whatever card size is currently in effect (--plan-sideboard-w, computed in
+     PlanBuilderPage.jsx from the same measurement that sizes Main Deck's columns — see
+     CardStack.css) — one card plus padding. Height matches the mid column's total height
+     (400 + 16 gap + 400) so columns 1/2/3 all end at the same Y. Tighter horizontal padding than
+     the shared 0.75rem above — needed so the card still fits inside this narrow box without its
+     edge clipping. */
+  width: var(--plan-sideboard-w, 180px);
   height: 816px;
   padding-left: 0.4rem;
   padding-right: 0.4rem;
@@ -220,9 +222,10 @@
 /* ---- Main deck: fixed at MAIN_DECK_COLUMNS (5) plain flexbox columns — which mana-value group
    lands in which column is decided in JS (packInOrder), not CSS `column-count`; multi-column
    layout's overflow/scroll behavior is unreliable across browsers and broke visibly on a real,
-   lopsided decklist. Card size and column gap are both tuned so 5 full columns fit the deck's
-   fixed-size box without needing to scroll horizontally in the common case; this still scrolls
-   (both axes) if a real decklist needs more room than that. ---- */
+   lopsided decklist. Card size is computed in JS (PlanBuilderPage.jsx measures this row's actual
+   available width and derives --plan-card-w) specifically so 5 full columns always fit without
+   horizontal scrolling — not a fixed size tuned for one screen. This still scrolls (both axes) if
+   the screen is narrow enough that even the minimum card size doesn't fit 5 columns. ---- */
 
 .plan-builder-mana-columns {
   flex: 1;
@@ -231,8 +234,9 @@
   flex-direction: row;
   align-items: flex-start;
   gap: 0.7rem;
-  /* 5 super-columns (MAIN_DECK_COLUMNS) at their width below, plus the gaps between them. */
-  min-width: calc(5 * 180px + 4 * 0.7rem);
+  /* Fallback only, for before the sizing effect has run — 5 columns at the smallest card size
+     (--plan-card-w's floor is 112px, see PlanBuilderPage.jsx's MIN_CARD_WIDTH) plus their padding. */
+  min-width: calc(5 * 128px + 4 * 0.7rem);
   overflow: auto;
 }
 
@@ -241,8 +245,8 @@
   flex-direction: column;
   gap: 0.7rem;
   flex-shrink: 0;
-  /* Card width (164px) plus a little breathing room on each side. */
-  width: 180px;
+  /* Current card width (--plan-card-w) plus a little breathing room on each side. */
+  width: calc(var(--plan-card-w, 164px) + 16px);
 }
 
 .plan-builder-mana-column {
@@ -308,9 +312,9 @@
 }
 
 .plan-builder-flow-zone {
-  /* Width matches the smaller card size (see CardStack.css) — two columns of 164px cards plus
-     padding/gap. */
-  width: 370px;
+  /* Width tracks whatever card size is currently in effect (--plan-flowzone-w, computed in
+     PlanBuilderPage.jsx — see CardStack.css) — two columns of cards plus padding/gap. */
+  width: var(--plan-flowzone-w, 370px);
   height: 400px;
   display: flex;
   flex-direction: column;
