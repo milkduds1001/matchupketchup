@@ -186,7 +186,7 @@ function ranksForNames(ranksRef, scopeKey, names) {
 }
 
 const FLOW_ZONE_COLUMNS = 2
-const MAIN_DECK_COLUMNS = 6
+const MAIN_DECK_COLUMNS = 5
 
 /**
  * "Outs" (top, pointing right toward the sideboard cards are leaving to) or "Ins" (bottom,
@@ -409,6 +409,19 @@ export default function PlanBuilderPage({
     if (card) adjust(card, -1)
   }
 
+  /** "Clear" button: wipes this matchup's saved plan only (Out/In assignments + notes) — every
+   * other matchup for this deck is untouched. Confirms first since there's no undo. */
+  function handleClearPlan() {
+    if (totalOut === 0 && totalIn === 0 && !keysToMatchup[activeArchName]) return
+    const confirmed = window.confirm(
+      `Clear the saved sideboard plan for "${activeArchName}"? This removes its Out/In assignments and notes and can't be undone.`
+    )
+    if (!confirmed) return
+    outEntries.forEach((row) => adjust(row.card, -row.assigned))
+    inEntries.forEach((row) => adjust(row.card, -row.assigned))
+    onKeysChange?.(activeArchName, '')
+  }
+
   // --- Render ---
 
   if (safeArchetypes.length === 0) {
@@ -576,6 +589,9 @@ export default function PlanBuilderPage({
           onClick={() => notesFieldRef.current?.blur()}
         >
           Save
+        </button>
+        <button type="button" className="plan-builder-notes-clear" onClick={handleClearPlan}>
+          Clear
         </button>
       </div>
     </div>

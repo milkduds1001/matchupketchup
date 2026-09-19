@@ -1,9 +1,10 @@
 .card-row-stack {
-  /* ~30% larger than the original 140/196/18 — same aspect ratio and peek-to-height proportion,
-     just bigger. */
-  --card-w: 182px;
-  --card-h: 255px;
-  --card-peek: 23px;
+  /* Scaled down ~10% from 182/255/23 so Main Deck's 5 mana-value columns fit its box without
+     clipping — same aspect ratio and peek-to-height proportion, just a bit smaller. Same constants
+     everywhere (Main Deck/Outs/Ins/Sideboard), so this one change is the size everywhere. */
+  --card-w: 164px;
+  --card-h: 230px;
+  --card-peek: 21px;
   display: flex;
   flex-direction: column;
   width: var(--card-w);
