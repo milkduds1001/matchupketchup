@@ -294,7 +294,6 @@ export default function PlanBuilderPage({
 
   const [selectedArchName, setSelectedArchName] = useState(() => safeArchetypes[0]?.name ?? '')
   const [selectedRole, setSelectedRole] = useState('play')
-  const notesFieldRef = useRef(null)
 
   // Card width that makes MAIN_DECK_COLUMNS fit the mana-columns row without horizontal scroll —
   // recomputed whenever that row's available width changes (window resize, sidebar toggling,
@@ -330,6 +329,7 @@ export default function PlanBuilderPage({
 
   /** Step through matchups with the toolbar's "< Back" / "Next >" buttons. */
   const activeArchIndex = safeArchetypes.findIndex((a) => a.name === activeArchName)
+  const activeArch = activeArchIndex >= 0 ? safeArchetypes[activeArchIndex] : null
   const goToArchOffset = (offset) => {
     const next = safeArchetypes[activeArchIndex + offset]
     if (next) setSelectedArchName(next.name)
@@ -491,64 +491,83 @@ export default function PlanBuilderPage({
         '--plan-sideboard-w': `${sideboardWidth}px`,
       }}
     >
+      {/* Header: play/draw on the far left, the matchup itself front and center (opponent largest),
+          and matchup navigation (Back / jump-to dropdown / Next) grouped on the far right. */}
       <div className="plan-builder-toolbar">
-        <div className="plan-builder-toolbar-deck">
-          <span className="plan-builder-toolbar-deck-name">{decklist?.name ?? '—'}</span>
+        <div className="plan-builder-toolbar-side plan-builder-toolbar-side--left">
+          <div className="plan-builder-role-toggle" role="group" aria-label="On the play or draw">
+            <button
+              type="button"
+              className={`plan-builder-role-btn${activeRole === 'play' ? ' plan-builder-role-btn--active' : ''}`}
+              onClick={() => setSelectedRole('play')}
+            >
+              On the play
+            </button>
+            <button
+              type="button"
+              className={`plan-builder-role-btn${activeRole === 'draw' ? ' plan-builder-role-btn--active' : ''}`}
+              onClick={() => setSelectedRole('draw')}
+            >
+              On the draw
+            </button>
+          </div>
+          <div className="plan-builder-totals" aria-live="polite">
+            <span className="plan-builder-total plan-builder-total--out">
+              Out: <strong>{totalOut}</strong>
+            </span>
+            <span className="plan-builder-total plan-builder-total--in">
+              In: <strong>{totalIn}</strong>
+            </span>
+          </div>
         </div>
-        <span className="plan-builder-toolbar-vs">vs.</span>
-        <label className="plan-builder-toolbar-control">
-          Matchup
-          <select className="crud-select" value={activeArchName} onChange={(e) => setSelectedArchName(e.target.value)}>
-            {safeArchetypes.map((arch) => (
-              <option key={arch.name} value={arch.name}>
-                {arch.name}
-                {arch.metagamePercent != null && arch.metagamePercent !== '' ? ` (${arch.metagamePercent}%)` : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        {metagameName ? <span className="plan-builder-toolbar-meta-name">{metagameName}</span> : null}
-        <div className="plan-builder-role-toggle" role="group" aria-label="On the play or draw">
-          <button
-            type="button"
-            className={`plan-builder-role-btn${activeRole === 'play' ? ' plan-builder-role-btn--active' : ''}`}
-            onClick={() => setSelectedRole('play')}
-          >
-            On the play
-          </button>
-          <button
-            type="button"
-            className={`plan-builder-role-btn${activeRole === 'draw' ? ' plan-builder-role-btn--active' : ''}`}
-            onClick={() => setSelectedRole('draw')}
-          >
-            On the draw
-          </button>
+
+        <div className="plan-builder-matchup-title">
+          <div className="plan-builder-matchup-us">
+            <span className="plan-builder-toolbar-deck-name">{decklist?.name ?? '—'}</span>
+            <span className="plan-builder-toolbar-vs">vs.</span>
+          </div>
+          <h2 className="plan-builder-matchup-opponent">{activeArchName}</h2>
+          <p className="plan-builder-matchup-meta">
+            {activeArch?.metagamePercent != null && activeArch.metagamePercent !== ''
+              ? `${activeArch.metagamePercent}% of metagame`
+              : null}
+            {activeArch?.metagamePercent != null && activeArch.metagamePercent !== '' && metagameName ? ' · ' : null}
+            {metagameName || null}
+          </p>
         </div>
-        <div className="plan-builder-totals" aria-live="polite">
-          <span className="plan-builder-total plan-builder-total--out">
-            Out: <strong>{totalOut}</strong>
-          </span>
-          <span className="plan-builder-total plan-builder-total--in">
-            In: <strong>{totalIn}</strong>
-          </span>
-        </div>
-        <div className="plan-builder-arch-nav" role="group" aria-label="Previous or next matchup">
-          <button
-            type="button"
-            className="plan-builder-arch-nav-btn"
-            onClick={() => goToArchOffset(-1)}
-            disabled={activeArchIndex <= 0}
-          >
-            ← Back
-          </button>
-          <button
-            type="button"
-            className="plan-builder-arch-nav-btn"
-            onClick={() => goToArchOffset(1)}
-            disabled={activeArchIndex < 0 || activeArchIndex >= safeArchetypes.length - 1}
-          >
-            Next →
-          </button>
+
+        <div className="plan-builder-toolbar-side plan-builder-toolbar-side--right">
+          <div className="plan-builder-arch-nav" role="group" aria-label="Choose matchup">
+            <button
+              type="button"
+              className="plan-builder-arch-nav-btn"
+              onClick={() => goToArchOffset(-1)}
+              disabled={activeArchIndex <= 0}
+            >
+              ← Back
+            </button>
+            <select
+              className="crud-select plan-builder-arch-select"
+              aria-label="Jump to matchup"
+              value={activeArchName}
+              onChange={(e) => setSelectedArchName(e.target.value)}
+            >
+              {safeArchetypes.map((arch) => (
+                <option key={arch.name} value={arch.name}>
+                  {arch.name}
+                  {arch.metagamePercent != null && arch.metagamePercent !== '' ? ` (${arch.metagamePercent}%)` : ''}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="plan-builder-arch-nav-btn"
+              onClick={() => goToArchOffset(1)}
+              disabled={activeArchIndex < 0 || activeArchIndex >= safeArchetypes.length - 1}
+            >
+              Next →
+            </button>
+          </div>
         </div>
       </div>
 
@@ -632,19 +651,11 @@ export default function PlanBuilderPage({
 
       <div className="plan-builder-notes-bar">
         <textarea
-          ref={notesFieldRef}
           className="plan-builder-notes-input"
-          placeholder="Add notes for this matchup…"
+          placeholder="Add notes for this matchup… (saves automatically)"
           value={keysToMatchup[activeArchName] ?? ''}
           onChange={(e) => onKeysChange?.(activeArchName, e.target.value)}
         />
-        <button
-          type="button"
-          className="plan-builder-notes-save"
-          onClick={() => notesFieldRef.current?.blur()}
-        >
-          Save
-        </button>
         <button type="button" className="plan-builder-notes-clear" onClick={handleClearPlan}>
           Clear
         </button>

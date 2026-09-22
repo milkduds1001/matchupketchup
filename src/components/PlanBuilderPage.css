@@ -17,49 +17,94 @@
   color: var(--color-text-muted, #5a5a5a);
 }
 
-/* ---- Toolbar: deck/matchup context, matchup dropdown, play/draw toggle, in/out totals ---- */
+/* ---- Header: three-column grid — play/draw + in/out totals pinned left, the matchup title
+   centered (opponent name largest, our deck just above it, metagame as a muted footnote), and
+   matchup navigation (Back / jump-to select / Next) pinned right. The equal 1fr side columns keep
+   the title truly centered no matter how wide either side's controls are. ---- */
 
 .plan-builder-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.6rem 1.5rem;
-  padding: 0.7rem 1.1rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  padding: 0.9rem 1.1rem;
   background: var(--color-surface, #efe6d3);
   border: 1px solid var(--color-border, #d6c7a8);
   border-radius: var(--radius-lg, 14px);
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(43, 43, 43, 0.06));
 }
 
-.plan-builder-toolbar-deck {
+.plan-builder-toolbar-side {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.5rem;
   min-width: 0;
+}
+
+.plan-builder-toolbar-side--left {
+  justify-self: start;
+  align-items: flex-start;
+}
+
+.plan-builder-toolbar-side--right {
+  justify-self: end;
+  align-items: flex-end;
+}
+
+.plan-builder-matchup-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 0;
+}
+
+.plan-builder-matchup-us {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
 }
 
 .plan-builder-toolbar-deck-name {
   font-family: var(--font-display, 'Bebas Neue', sans-serif);
-  font-size: 1.2rem;
+  font-size: 1.6rem;
+  line-height: 1;
   letter-spacing: 0.04em;
   color: var(--diner-blue, #2d6cdf);
 }
 
 .plan-builder-toolbar-vs {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--color-text-muted, #5a5a5a);
-  align-self: center;
 }
 
-.plan-builder-toolbar-meta-name {
-  align-self: flex-end;
-  font-size: 0.82rem;
+.plan-builder-matchup-opponent {
+  margin: 0.1rem 0 0;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: var(--color-text, #2b2b2b);
+  overflow-wrap: anywhere;
+}
+
+.plan-builder-matchup-meta {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
   color: var(--color-text-muted, #5a5a5a);
+}
+
+.plan-builder-arch-select {
+  width: 12rem;
+  max-width: 100%;
+  font-size: 0.85rem;
 }
 
 .plan-builder-arch-nav {
   display: inline-flex;
+  align-items: stretch;
   gap: 0.4rem;
 }
 
@@ -81,20 +126,8 @@
   cursor: not-allowed;
 }
 
-.plan-builder-toolbar-control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #5a5a5a);
-}
-
 .plan-builder-role-toggle {
   display: inline-flex;
-  align-self: flex-end;
   border: 1px solid var(--color-border, #d6c7a8);
   border-radius: var(--radius-md, 10px);
   overflow: hidden;
@@ -122,7 +155,6 @@
 }
 
 .plan-builder-totals {
-  margin-left: auto;
   display: flex;
   gap: 1rem;
   align-items: center;
@@ -401,7 +433,7 @@
 }
 
 /* ---- Notes bar: per-matchup free text ("keys to the matchup"), autosaved on every keystroke via
-   the same App.jsx effect Step 5 uses — "Save" just confirms/blurs, it's not a separate write. ---- */
+   the same App.jsx effect Step 5 uses (as are all Out/In edits) — so there's no Save button. ---- */
 
 .plan-builder-notes-bar {
   display: flex;
@@ -422,22 +454,8 @@
   border-radius: var(--radius-md, 10px);
 }
 
-.plan-builder-notes-save {
-  appearance: none;
-  border: none;
-  border-radius: var(--radius-md, 10px);
-  background: var(--color-primary, #c62828);
-  color: var(--color-on-primary, #fff);
-  padding: 0 1.4rem;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* Deliberately not red like Save — a neutral/dark tone (matches .btn-reset elsewhere in the app)
-   so a destructive "wipe this matchup's plan" action doesn't read as just another save-adjacent
-   button. */
+/* Neutral/dark rather than primary red (matches .btn-reset elsewhere in the app), so a destructive
+   "wipe this matchup's plan" action doesn't read as a routine primary button. */
 .plan-builder-notes-clear {
   appearance: none;
   border: none;
@@ -457,12 +475,22 @@
 
 @media (max-width: 640px) {
   .plan-builder-toolbar {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 
-  .plan-builder-totals {
-    margin-left: 0;
+  .plan-builder-matchup-title {
+    order: -1;
+  }
+
+  .plan-builder-toolbar-side--left,
+  .plan-builder-toolbar-side--right {
+    justify-self: stretch;
+    align-items: center;
+  }
+
+  .plan-builder-arch-nav {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .plan-builder-notes-bar {
