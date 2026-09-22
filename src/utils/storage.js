@@ -924,6 +924,35 @@ export function applyLockedGoldfishDefaults(grid, payload, formatName) {
     lockedRowIds.push(rowId)
   }
 
+  // Rows fed by an earlier snapshot that Goldfish no longer reports. Without this they kept their
+  // old locked-column percentages forever (e.g. a deck at 21% three weeks ago still showing 21%
+  // in the 7-day matchup list). Drop them — unless the user typed values into one of their own
+  // (unlocked) columns, in which case keep the row as an ordinary user row with the stale
+  // Goldfish cells cleared.
+  const currentLockedSet = new Set(lockedRowIds)
+  const allLockedColSet = new Set(allLockedIds)
+  const droppedRowIds = new Set()
+  // A row counts as Goldfish-fed if the grid recorded it as locked, or if it has any value in a
+  // locked column (those columns are read-only in the editor, so only the feed could have filled
+  // them — this also catches grids saved before lockedRowIds was tracked reliably).
+  const prevLockedRowIds = new Set(Array.isArray(grid?.defaults?.lockedRowIds) ? grid.defaults.lockedRowIds : [])
+  for (const row of grid.rows) {
+    if (allLockedIds.some((colId) => String(cells[row.id]?.[colId] ?? '').trim())) prevLockedRowIds.add(row.id)
+  }
+  for (const rowId of prevLockedRowIds) {
+    if (currentLockedSet.has(rowId) || !rowsById.has(rowId)) continue
+    const rowCells = cells[rowId] || {}
+    const hasUserData = grid.columns.some(
+      (col) => !allLockedColSet.has(col.id) && String(rowCells[col.id] ?? '').trim()
+    )
+    if (hasUserData) {
+      for (const colId of allLockedIds) rowCells[colId] = ''
+    } else {
+      droppedRowIds.add(rowId)
+      delete cells[rowId]
+    }
+  }
+
   const lockedUnique = [...new Set(lockedRowIds)]
   lockedUnique.sort((a, b) => {
     const sortColId = lockedIdsByWindow['30'] || lockedIdsByWindow['14'] || lockedIdsByWindow['7'] || lockedIds[0]
@@ -938,7 +967,9 @@ export function applyLockedGoldfishDefaults(grid, payload, formatName) {
   const lockedSet = new Set(lockedUnique)
   const orderedRows = [
     ...lockedUnique.map((id) => rowsById.get(id)).filter(Boolean),
-    ...grid.rows.filter((row) => !lockedSet.has(row.id)).map((row) => rowsById.get(row.id)),
+    ...grid.rows
+      .filter((row) => !lockedSet.has(row.id) && !droppedRowIds.has(row.id))
+      .map((row) => rowsById.get(row.id)),
   ].filter(Boolean)
 
   const lockLabelByKey = Object.fromEntries(
