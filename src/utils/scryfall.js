@@ -50,27 +50,51 @@ export async function fetchCardTypes(cardNames, onResult, delayMs = DELAY_MS) {
   }
 }
 
+// Scryfall answers 429 once a client exceeds ~10 requests/second. The metadata pass and the
+// image prefetch both hit the API when a deck loads, so a burst can trip it — and before this
+// retry, every card after that point came back null and landed in the "unknown" mana column.
+const RATE_LIMIT_RETRIES = 3
+const RATE_LIMIT_BACKOFF_MS = 1000
+
+/**
+ * Thrown for a transient failure (rate limit, 5xx, network) — as opposed to a clean 404/`null`,
+ * which means Scryfall confirmed there is no such card. Callers use this to avoid caching a
+ * temporary outage as a permanent "not found".
+ */
+class ScryfallTransientError extends Error {}
+
 async function scryfallJsonFetch(url, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      ...SCRYFALL_JSON_HEADERS,
-      ...(options.headers || {}),
-    },
-  })
-  if (!res.ok) return null
-  const data = await res.json()
-  return data && typeof data === 'object' ? data : null
+  for (let attempt = 0; ; attempt += 1) {
+    let res
+    try {
+      res = await fetch(url, {
+        ...options,
+        headers: {
+          ...SCRYFALL_JSON_HEADERS,
+          ...(options.headers || {}),
+        },
+      })
+    } catch (err) {
+      throw new ScryfallTransientError(String(err))
+    }
+    if ((res.status === 429 || res.status >= 500) && attempt < RATE_LIMIT_RETRIES) {
+      const retryAfterSec = Number(res.headers.get('Retry-After'))
+      await delay(Number.isFinite(retryAfterSec) && retryAfterSec > 0
+        ? retryAfterSec * 1000
+        : RATE_LIMIT_BACKOFF_MS * (attempt + 1))
+      continue
+    }
+    if (res.status === 429 || res.status >= 500) throw new ScryfallTransientError(`HTTP ${res.status}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data && typeof data === 'object' ? data : null
+  }
 }
 
-/** One GET against the Scryfall "named" endpoint; null on any non-2xx response or network error. */
+/** One GET against the Scryfall "named" endpoint; null on a 404. Throws ScryfallTransientError on rate limit/network failure. */
 async function getScryfallNamed(param, cardName) {
-  try {
-    const url = `${SCRYFALL_NAMED_URL}?${param}=${encodeURIComponent(cardName)}`
-    return await scryfallJsonFetch(url)
-  } catch {
-    return null
-  }
+  const url = `${SCRYFALL_NAMED_URL}?${param}=${encodeURIComponent(cardName)}`
+  return scryfallJsonFetch(url)
 }
 
 function cardNameCandidates(card) {
@@ -105,7 +129,7 @@ function cardMatchesRequestedName(card, requestedName) {
  * against the printed name alone would otherwise miss entirely.
  * @returns {Promise<object|null>}
  */
-async function fetchCardJsonByExactName(cardName) {
+async function fetchCardJsonByExactNameOrThrow(cardName) {
   if (!cardName || typeof cardName !== 'string') return null
   const trimmed = cardName.trim()
   if (!trimmed) return null
@@ -114,16 +138,53 @@ async function fetchCardJsonByExactName(cardName) {
   return getScryfallNamed('fuzzy', trimmed)
 }
 
+/** Same as above, but swallows transient failures as null (for image/preview callers that just want best effort). */
+async function fetchCardJsonByExactName(cardName) {
+  try {
+    return await fetchCardJsonByExactNameOrThrow(cardName)
+  } catch {
+    return null
+  }
+}
+
 /**
- * Fetch metadata for multiple card names (throttled). Callback receives (name, meta | null).
- * `meta` is the Scryfall card object when found.
+ * Fetch metadata for multiple card names. Callback receives (name, meta | null): `meta` is the
+ * Scryfall card object, `null` means Scryfall confirmed no such card. A name whose lookup failed
+ * transiently (rate limit/network, even after retries) gets no callback at all, so the caller
+ * leaves it uncached and can try again later instead of recording it as unknown.
+ *
+ * Resolves in bulk via the collection endpoint (75 names per request) — a whole deck is one or
+ * two requests instead of ~40 — and falls back to individual named lookups only for names the
+ * collection didn't match (e.g. crossover printings whose decklist name differs).
  */
 export async function fetchCardMetadata(cardNames, onResult, delayMs = DELAY_MS) {
-  const names = uniqueNonEmptyNames(cardNames)
-  for (const name of names) {
-    const meta = await fetchCardJsonByExactName(name)
-    onResult(name, meta)
-    if (delayMs > 0) await delay(delayMs)
+  const names = uniqueNonEmptyNames(cardNames).map((n) => String(n).trim())
+  for (let i = 0; i < names.length; i += COLLECTION_BATCH_SIZE) {
+    if (i > 0) await delay(COLLECTION_BATCH_DELAY_MS)
+    const batch = names.slice(i, i + COLLECTION_BATCH_SIZE)
+    let unmatched = batch
+    const payload = await fetchCollectionByNames(batch)
+    if (payload) {
+      const found = Array.isArray(payload.data) ? [...payload.data] : []
+      unmatched = []
+      for (const requested of batch) {
+        const idx = found.findIndex((card) => cardMatchesRequestedName(card, requested))
+        if (idx < 0) {
+          unmatched.push(requested)
+          continue
+        }
+        const [card] = found.splice(idx, 1)
+        onResult(requested, card)
+      }
+    }
+    for (const name of unmatched) {
+      try {
+        onResult(name, await fetchCardJsonByExactNameOrThrow(name))
+      } catch {
+        // Transient failure: leave uncached (see doc comment).
+      }
+      if (delayMs > 0) await delay(delayMs)
+    }
   }
 }
 
